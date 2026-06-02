@@ -92,7 +92,9 @@ function dnsLeakChecklist(dns, stats) {
       warn: dnsInbound || dnsRouting,
       title: 'DNS устройств перехватывается',
       detail: dnsInbound && dnsRouting
-        ? `Есть DNS inbound и правило на dns-out. Осталось направить dnsmasq на ${xrayDnsTarget}.`
+        ? (state.lanDnsStatus?.platform === 'keenetic'
+          ? `Есть DNS inbound и правило на dns-out. Для Keenetic используйте DNS intercept в firewall на ${xrayDnsTarget}.`
+          : `Есть DNS inbound и правило на dns-out. Осталось направить dnsmasq на ${xrayDnsTarget}.`)
         : 'Для LAN-устройств нужен DNS inbound и маршрут на dns-out, иначе часть клиентов может обходить Xray DNS.',
       action: dnsInbound && dnsRouting ? '' : 'prepareDnsInbound',
       actionLabel: 'Подготовить inbound'
@@ -133,7 +135,9 @@ function dnsLeakChecklist(dns, stats) {
     items[4].actionLabel = 'Перевыбрать порт';
   }
   if (items[4] && dnsInbound && dnsRouting && !dnsPortConflict) {
-    items[4].detail = `Xray готов принимать DNS на ${xrayDnsTarget.replace('#', ':')}. Если хотите вести LAN через него, откройте вкладку LAN DNS и примените режим DNS через Xray.`;
+    items[4].detail = state.lanDnsStatus?.platform === 'keenetic'
+      ? `Xray готов принимать DNS на ${xrayDnsTarget.replace('#', ':')}. На Keenetic ведите LAN через DNS intercept в firewall или настройте DNS вручную в панели Keenetic.`
+      : `Xray готов принимать DNS на ${xrayDnsTarget.replace('#', ':')}. Если хотите вести LAN через него, откройте вкладку LAN DNS и примените режим DNS через Xray.`;
   }
   return `
     <section class="panel dns-guard-panel">
@@ -484,19 +488,20 @@ function dnsCheckSection() {
 function dnsAdvancedSection() {
   const target = state.lanDnsStatus?.xrayTarget || state.lanDnsStatus?.suggestedXrayTarget || `127.0.0.1#${state.dnsInboundPort || '10535'}`;
   const targetTcp = String(target).replace('#', ':');
+  const isKeenetic = state.lanDnsStatus?.platform === 'keenetic';
   return `
     ${dnsModeSection()}
     <section class="panel dns-inbound-panel">
       <div class="panel-title">
-        <div><h2>DNS inbound</h2><span>Xray принимает DNS на ${escapeHtml(targetTcp)}, а dnsmasq можно направить на этот порт.</span></div>
+        <div><h2>DNS inbound</h2><span>${isKeenetic ? `Xray принимает DNS на ${escapeHtml(targetTcp)}; на Keenetic этот порт используется firewall DNS intercept или ручной настройкой DNS.` : `Xray принимает DNS на ${escapeHtml(targetTcp)}, а dnsmasq можно направить на этот порт.`}</span></div>
         <div class="split-actions">
           <button class="btn secondary ${state.busyAction === 'prepareDnsInbound' ? 'is-busy' : ''}" data-action="prepareDnsInbound" ${state.busyAction === 'prepareDnsInbound' ? 'disabled' : ''}>${state.busyAction === 'prepareDnsInbound' ? 'Готовлю...' : 'Подготовить inbound'}</button>
           <button class="btn warning ${state.configTesting ? 'is-busy' : ''}" data-action="test" ${state.configTesting || state.configApplying ? 'disabled' : ''}>${state.configTesting ? 'Проверяю...' : 'Проверить черновик'}</button>
         </div>
       </div>
       <div class="settings-warning">
-        <strong>dnsmasq</strong>
-        <span>После применения черновика выберите схему в блоке DNS для LAN: направить DNS на Xray, внешний Pi-hole или вернуть стандартный KeeneticOS resolver.</span>
+        <strong>${isKeenetic ? 'KeeneticOS DNS proxy' : 'dnsmasq'}</strong>
+        <span>${isKeenetic ? 'После применения черновика DNS inbound готов для перехвата DNS в firewall. Штатный DNS proxy KeeneticOS RuOpenRay пока показывает только как read-only статус.' : 'После применения черновика выберите схему в блоке DNS для LAN: направить DNS на Xray, внешний Pi-hole или вернуть стандартный KeeneticOS resolver.'}</span>
       </div>
     </section>
   `;
@@ -504,6 +509,8 @@ function dnsAdvancedSection() {
 
 function lanDnsSection() {
   const status = state.lanDnsStatus || {};
+  const isKeenetic = status.platform === 'keenetic';
+  const configurable = status.configurable !== false;
   const servers = Array.isArray(status.servers) ? status.servers : [];
   const readiness = status.readiness || {};
   const plan = state.lanDnsPreview || status.plan || null;
@@ -511,12 +518,12 @@ function lanDnsSection() {
   const warnings = Array.isArray(plan?.warnings) ? plan.warnings : [];
   const xrayNeedsReadiness = state.lanDnsMode === 'xray';
   const xrayReady = !xrayNeedsReadiness || readiness.ready;
-  const applyDisabled = state.lanDnsSaving || status.available === false || !plan || !xrayReady;
+  const applyDisabled = state.lanDnsSaving || status.available === false || !configurable || !plan || !xrayReady;
   const current = status.available === false
     ? 'UCI недоступен'
     : servers.length
       ? servers.join(', ')
-      : (status.noresolv ? 'серверы не заданы' : 'системный resolv.conf');
+      : (status.noresolv ? 'серверы не заданы' : (isKeenetic ? 'KeeneticOS DNS proxy' : 'системный resolv.conf'));
   const routerLan = status.routerLan || '192.168.1.1';
   const xrayTarget = status.xrayTarget || status.suggestedXrayTarget || '127.0.0.1#10535';
   const xrayPort = String(xrayTarget).split('#').pop() || '10535';
@@ -542,23 +549,23 @@ function lanDnsSection() {
       <div class="panel-title">
         <div>
           <h2>DNS для LAN</h2>
-          <span>Настраивает, куда dnsmasq отправляет DNS-запросы домашних устройств. Это отдельный системный шаг после подготовки DNS inbound в Xray.</span>
+          <span>${isKeenetic ? 'Показывает, куда KeeneticOS DNS proxy отправляет DNS-запросы домашних устройств. Автоматическое изменение Keenetic DNS пока выключено.' : 'Настраивает, куда dnsmasq отправляет DNS-запросы домашних устройств. Это отдельный системный шаг после подготовки DNS inbound в Xray.'}</span>
         </div>
       </div>
       <div class="settings-info-grid">
         <article><span>Текущий режим</span><strong>${escapeHtml(lanDnsModeLabel(status.mode))}</strong></article>
-        <article><span>Upstream dnsmasq</span><strong>${escapeHtml(current)}</strong></article>
+        <article><span>${isKeenetic ? 'Upstream KeeneticOS' : 'Upstream dnsmasq'}</span><strong>${escapeHtml(current)}</strong></article>
         <article><span>Адрес роутера</span><strong>${escapeHtml(routerLan)}</strong></article>
         <article><span>Xray DNS inbound</span><strong>${escapeHtml(xrayTarget)}</strong></article>
       </div>
       <div class="apply-state-panel ${currentMatchesDraft ? 'ok' : 'warn'}">
         <div class="apply-state-head">
           <strong>${currentMatchesDraft ? 'LAN DNS применен' : 'LAN DNS отличается от черновика'}</strong>
-          <span>${currentMatchesDraft ? 'dnsmasq уже настроен так, как выбрано ниже.' : 'Ниже видно текущий upstream dnsmasq и что будет применено после кнопки «Применить LAN DNS».'}</span>
+          <span>${isKeenetic ? 'KeeneticOS DNS proxy показан только для контроля. Для принудительного DNS через Xray используйте перехват DNS в firewall.' : (currentMatchesDraft ? 'dnsmasq уже настроен так, как выбрано ниже.' : 'Ниже видно текущий upstream dnsmasq и что будет применено после кнопки «Применить LAN DNS».')}</span>
         </div>
         <div class="apply-state-grid two">
           <article class="${currentMatchesDraft ? 'ok' : 'warn'}">
-            <span>Сейчас в dnsmasq</span>
+            <span>${isKeenetic ? 'Сейчас в KeeneticOS' : 'Сейчас в dnsmasq'}</span>
             <strong>${escapeHtml(lanDnsModeLabel(status.mode))}</strong>
             <small>${escapeHtml(current)}</small>
           </article>
@@ -572,15 +579,15 @@ function lanDnsSection() {
       <div class="advanced-grid three lan-dns-modes">
         <button type="button" class="advanced-card ${state.lanDnsMode === 'xray' ? 'active' : ''}" data-lan-dns-mode="xray">
           <strong>DNS через Xray</strong>
-          <span>LAN → dnsmasq → ${escapeHtml(xrayTarget)} → Xray DNS. Подходит, когда RuOpenRay управляет DNS-маршрутизацией.</span>
+          <span>${isKeenetic ? `LAN → KeeneticOS DNS proxy; для Xray DNS используйте firewall DNS intercept на ${escapeHtml(xrayTarget)}.` : `LAN → dnsmasq → ${escapeHtml(xrayTarget)} → Xray DNS. Подходит, когда RuOpenRay управляет DNS-маршрутизацией.`}</span>
         </button>
         <button type="button" class="advanced-card ${state.lanDnsMode === 'upstream' ? 'active' : ''}" data-lan-dns-mode="upstream">
           <strong>Внешний DNS / Pi-hole</strong>
-          <span>LAN → dnsmasq → Pi-hole или другой DNS. Укажите адрес ниже, порт 53 добавится автоматически.</span>
+          <span>${isKeenetic ? 'Внешний DNS или Pi-hole задается в родной панели Keenetic. Здесь адрес показывается как контрольный статус.' : 'LAN → dnsmasq → Pi-hole или другой DNS. Укажите адрес ниже, порт 53 добавится автоматически.'}</span>
         </button>
         <button type="button" class="advanced-card ${state.lanDnsMode === 'system' ? 'active' : ''}" data-lan-dns-mode="system">
           <strong>Как в KeeneticOS</strong>
-          <span>Убрать переопределение server/noresolv и вернуть dnsmasq к системным настройкам WAN.</span>
+          <span>${isKeenetic ? 'Оставить штатный KeeneticOS DNS proxy и WAN DNS.' : 'Убрать переопределение server/noresolv и вернуть dnsmasq к системным настройкам WAN.'}</span>
         </button>
       </div>
       <div class="lan-dns-form">
@@ -594,8 +601,8 @@ function lanDnsSection() {
           <input id="lanDnsUpstream" value="${escapeHtml(state.lanDnsUpstream)}" placeholder="192.168.1.10 или 192.168.1.10#53" ${state.lanDnsMode === 'upstream' ? '' : 'disabled'} />
         </div>
         <label class="settings-check compact ${state.lanDnsRestart ? 'active' : ''}">
-          <input id="lanDnsRestart" type="checkbox" ${state.lanDnsRestart ? 'checked' : ''} />
-          <span><strong>Перезапустить dnsmasq</strong><em>Изменения UCI начнут работать сразу после restart.</em></span>
+          <input id="lanDnsRestart" type="checkbox" ${state.lanDnsRestart ? 'checked' : ''} ${isKeenetic ? 'disabled' : ''} />
+          <span><strong>${isKeenetic ? 'KeeneticOS DNS read-only' : 'Перезапустить dnsmasq'}</strong><em>${isKeenetic ? 'RuOpenRay пока не изменяет DNS proxy Keenetic автоматически.' : 'Изменения UCI начнут работать сразу после restart.'}</em></span>
         </label>
       </div>
       <div class="lan-dns-readiness">
@@ -609,15 +616,16 @@ function lanDnsSection() {
         <pre>${escapeHtml(commands.join('\n'))}</pre>
       </div>` : '<p class="muted">Сначала нажмите «Проверить и показать команды»: RuOpenRay ничего не изменит, только покажет план.</p>'}
       ${warnings.length ? `<div class="settings-warning"><strong>Важно</strong><span>${escapeHtml(warnings.join(' '))}</span></div>` : ''}
-      ${dnsPortConflict ? `<div class="settings-warning"><strong>Порт DNS занят</strong><span>UDP ${escapeHtml(xrayTarget)} уже держит ${escapeHtml(conflictOwner || 'другой процесс')}. При подготовке черновика RuOpenRay выберет запасной порт ${escapeHtml(suggestedTarget)}, а dnsmasq нужно направить туда же.</span></div>` : ''}
+      ${dnsPortConflict ? `<div class="settings-warning"><strong>Порт DNS занят</strong><span>UDP ${escapeHtml(xrayTarget)} уже держит ${escapeHtml(conflictOwner || 'другой процесс')}. При подготовке черновика RuOpenRay выберет запасной порт ${escapeHtml(suggestedTarget)}${isKeenetic ? ', а DNS intercept нужно держать на том же порту.' : ', а dnsmasq нужно направить туда же.'}</span></div>` : ''}
       ${xrayNeedsReadiness && !readiness.ready ? `<div class="settings-warning"><strong>DNS через Xray пока не готов</strong><span>Сначала подготовьте DNS inbound, примените конфигурацию Xray и убедитесь, что порт ${escapeHtml(readiness.targetTCP || xrayTarget.replace('#', ':'))} слушает. Кнопка применения заблокирована, чтобы не оставить LAN без DNS.</span></div>` : ''}
+      ${isKeenetic ? `<div class="settings-warning"><strong>KeeneticOS DNS</strong><span>${escapeHtml(status.hint || 'Автоматическое изменение DNS в KeeneticOS пока выключено. Для DNS через Xray используйте firewall DNS intercept или настройте DNS вручную в панели Keenetic.')}</span></div>` : ''}
       <div class="settings-warning">
         <strong>Если Pi-hole главный DNS</strong>
         <span>DHCP может выдавать клиентам Pi-hole напрямую. Тогда в Pi-hole upstream укажите ${escapeHtml(routerLan)}#${escapeHtml(xrayPort)}, а Xray DNS inbound должен быть доступен с LAN-адреса роутера. Не делайте цепочку Pi-hole → роутер → Pi-hole.</span>
       </div>
       <div class="toolbar">
         <button class="btn secondary ${state.lanDnsSaving && state.busyAction === 'previewLanDnsUpstream' ? 'is-busy' : ''}" data-action="previewLanDnsUpstream" ${state.lanDnsSaving || status.available === false ? 'disabled' : ''}>${state.lanDnsSaving && state.busyAction === 'previewLanDnsUpstream' ? 'Проверяю...' : 'Проверить и показать команды'}</button>
-        <button class="btn warning ${state.lanDnsSaving && state.busyAction === 'applyLanDnsUpstream' ? 'is-busy' : ''}" data-action="applyLanDnsUpstream" ${applyDisabled ? 'disabled' : ''}>${state.lanDnsSaving && state.busyAction === 'applyLanDnsUpstream' ? 'Применяю LAN DNS...' : 'Применить LAN DNS'}</button>
+        <button class="btn warning ${state.lanDnsSaving && state.busyAction === 'applyLanDnsUpstream' ? 'is-busy' : ''}" data-action="applyLanDnsUpstream" ${applyDisabled ? 'disabled' : ''}>${state.lanDnsSaving && state.busyAction === 'applyLanDnsUpstream' ? 'Применяю LAN DNS...' : (isKeenetic ? 'Keenetic DNS read-only' : 'Применить LAN DNS')}</button>
         <button class="btn secondary ${state.busyAction === 'prepareDnsInbound' ? 'is-busy' : ''}" data-action="prepareDnsInbound" ${state.busyAction === 'prepareDnsInbound' ? 'disabled' : ''}>${state.busyAction === 'prepareDnsInbound' ? 'Готовлю...' : 'Подготовить DNS inbound'}</button>
       </div>
     </section>

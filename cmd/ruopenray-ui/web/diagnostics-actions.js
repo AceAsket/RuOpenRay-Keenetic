@@ -48,7 +48,8 @@ export function createDiagnosticsActions({
   
       const lanDns = await request('/api/dns/lan-upstream');
       const dnsReady = Boolean(lanDns.ok && (lanDns.mode !== 'xray' || lanDns.readiness?.ready));
-      pushStep(dnsReady, 'LAN DNS / dnsmasq', `${lanDns.mode || 'unknown'} · ${(lanDns.servers || []).join(', ') || 'серверы не заданы'}`);
+      const lanDnsStepTitle = lanDns.platform === 'keenetic' ? 'LAN DNS / KeeneticOS' : 'LAN DNS / dnsmasq';
+      pushStep(dnsReady, lanDnsStepTitle, `${lanDns.mode || 'unknown'} · ${(lanDns.servers || []).join(', ') || 'серверы не заданы'}`);
   
       const xrayDnsServer = String(lanDns.xrayTarget || lanDns.suggestedXrayTarget || '127.0.0.1#10535').replace('#', ':');
       const dnsServer = lanDns.mode === 'xray' ? xrayDnsServer : ((lanDns.servers || [])[0] || '127.0.0.1:53');
@@ -58,7 +59,9 @@ export function createDiagnosticsActions({
   
       const firewallBefore = await request('/api/firewall/status');
       const firewallReady = Boolean(firewallBefore.active && firewallBefore.persistent && (firewallBefore.routerMode !== 'tproxy' || (firewallBefore.ipRule && firewallBefore.ipRoute)));
-      pushStep(firewallReady, 'nftables и policy routing', `${firewallBefore.routerMode || 'unknown'} · active=${Boolean(firewallBefore.active)} · persistent=${Boolean(firewallBefore.persistent)}`);
+      const firewallStepTitle = firewallBefore.platform === 'keenetic' ? 'Keenetic hook и policy routing' : 'nftables и policy routing';
+      const firewallCounterLabel = firewallBefore.platform === 'keenetic' ? 'firewall' : 'nft';
+      pushStep(firewallReady, firewallStepTitle, `${firewallBefore.routerMode || 'unknown'} · active=${Boolean(firewallBefore.active)} · persistent=${Boolean(firewallBefore.persistent)}`);
   
       const statsBefore = await request('/api/xray/stats').catch(() => null);
       const beforeBytes = nftBytes(firewallBefore);
@@ -68,7 +71,7 @@ export function createDiagnosticsActions({
       const statsAfter = await request('/api/xray/stats').catch(() => null);
       const nftDelta = nftBytes(firewallAfter) - beforeBytes;
       const statsDelta = totalXrayStatsBytes(statsAfter) - beforeStats;
-      const trafficDetail = `nft +${byteSize(Math.max(0, nftDelta))} · Xray stats +${byteSize(Math.max(0, statsDelta))} · ${browserTraffic.detail}${nftDelta <= 0 && statsDelta <= 0 ? ' · трафик самого роутера может идти мимо LAN-перехвата' : ''}`;
+      const trafficDetail = `${firewallCounterLabel} +${byteSize(Math.max(0, nftDelta))} · Xray stats +${byteSize(Math.max(0, statsDelta))} · ${browserTraffic.detail}${nftDelta <= 0 && statsDelta <= 0 ? ' · трафик самого роутера может идти мимо LAN-перехвата' : ''}`;
       pushStep(Boolean(browserTraffic.ok || nftDelta > 0 || statsDelta > 0), 'Проверка выхода с роутера', trafficDetail, browserTraffic.ok ? 'warn' : '');
   
       const active = xrayActiveStats(statsAfter || state.status?.xrayStats || {});

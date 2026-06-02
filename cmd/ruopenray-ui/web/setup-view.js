@@ -103,6 +103,7 @@ function githubInstallCommand(withXray = false) {
 }
 
 function setupWizardSteps(readiness) {
+  const isKeenetic = state.firewallStatus?.platform === 'keenetic' || state.lanDnsStatus?.platform === 'keenetic';
   const xrayReady = Boolean(state.status?.core?.available);
   const geoReady = Boolean(state.geoStatus?.geoip?.exists && state.geoStatus?.geosite?.exists);
   const proxyReady = proxyOutboundsSafe().length > 0;
@@ -113,7 +114,7 @@ function setupWizardSteps(readiness) {
   return [
     { id: 'environment', title: 'Проверка', detail: 'Xray, geo-файлы, место', ok: xrayReady && geoReady },
     { id: 'mode', title: 'Режим', detail: 'Как вести LAN-трафик', ok: true },
-    { id: 'dns', title: 'DNS', detail: 'dnsmasq, Xray или Pi-hole', ok: dnsReady || state.setupLanDnsMode === 'keep' || state.setupLanDnsMode === 'upstream' },
+    { id: 'dns', title: 'DNS', detail: isKeenetic ? 'KeeneticOS proxy, Xray или Pi-hole' : 'dnsmasq, Xray или Pi-hole', ok: dnsReady || state.setupLanDnsMode === 'keep' || state.setupLanDnsMode === 'upstream' },
     { id: 'server', title: 'Сервер', detail: 'Прокси или подписка', ok: proxyReady },
     { id: 'routing', title: 'Правила', detail: 'Маршрутизация и geo', ok: true },
     { id: 'firewall', title: 'Перехват', detail: 'Firewall и LAN', ok: fwReady && transparentReady },
@@ -191,6 +192,7 @@ function setupStepNotice() {
 
 function setupWizardStepBody(readiness, diskFree, snapshot, result, rollback) {
   const step = state.setupStep || 'environment';
+  const isKeenetic = state.firewallStatus?.platform === 'keenetic' || state.lanDnsStatus?.platform === 'keenetic';
   const proxyCount = proxyOutboundsSafe().length;
   const fwMode = state.firewallRouterMode || state.firewallStatus?.routerMode || 'off';
   if (step === 'environment') {
@@ -238,7 +240,7 @@ function setupWizardStepBody(readiness, diskFree, snapshot, result, rollback) {
   if (step === 'dns') {
     return `<section class="setup-step-panel">
       <h3>DNS для LAN</h3>
-      <p>Можно оставить текущий DNS, направить dnsmasq в Xray DNS или использовать внешний DNS/Pi-hole. Для режима через Xray мастер проверит, что DNS-вход Xray действительно слушает порт.</p>
+      <p>${isKeenetic ? 'Можно оставить штатный KeeneticOS DNS proxy, подготовить Xray DNS для firewall DNS intercept или использовать внешний DNS/Pi-hole через родную панель Keenetic. Для режима через Xray мастер проверит, что DNS-вход Xray действительно слушает порт.' : 'Можно оставить текущий DNS, направить dnsmasq в Xray DNS или использовать внешний DNS/Pi-hole. Для режима через Xray мастер проверит, что DNS-вход Xray действительно слушает порт.'}</p>
       ${setupLanDnsBlock()}
     </section>`;
   }
@@ -297,6 +299,7 @@ function setupWizardStepBody(readiness, diskFree, snapshot, result, rollback) {
 }
 
 function setupLanDnsBlock() {
+  const isKeenetic = state.lanDnsStatus?.platform === 'keenetic' || state.firewallStatus?.platform === 'keenetic';
   return `<section class="setup-lan-dns in-step">
     <div class="segmented setup-dns-modes">
       ${[
@@ -310,17 +313,18 @@ function setupLanDnsBlock() {
       <input id="setupLanDnsUpstream" value="${escapeHtml(state.setupLanDnsUpstream)}" placeholder="192.168.1.10 или 192.168.1.10:53" />
     </div>` : ''}
     <label class="toggle-row">
-      <input id="setupRestartDnsmasq" type="checkbox" ${state.setupRestartDnsmasq ? 'checked' : ''} />
-      <span>Перезапустить dnsmasq после изменения</span>
+      <input id="setupRestartDnsmasq" type="checkbox" ${state.setupRestartDnsmasq ? 'checked' : ''} ${isKeenetic ? 'disabled' : ''} />
+      <span>${isKeenetic ? 'KeeneticOS DNS read-only' : 'Перезапустить dnsmasq после изменения'}</span>
     </label>
   </section>`;
 }
 
 function setupSnapshotBlock(snapshot) {
+  const isKeenetic = state.firewallStatus?.platform === 'keenetic' || state.lanDnsStatus?.platform === 'keenetic';
   return `<section class="setup-snapshot in-step">
     <div>
       <h3>Откат мастера</h3>
-      <p>${snapshot?.createdAt ? `Есть снимок от ${escapeHtml(new Date(snapshot.createdAt).toLocaleString('ru-RU'))}: конфигурация Xray, LAN DNS и nftables.` : 'Перед включением активного режима мастер сохранит снимок текущего состояния.'}</p>
+      <p>${snapshot?.createdAt ? `Есть снимок от ${escapeHtml(new Date(snapshot.createdAt).toLocaleString('ru-RU'))}: конфигурация Xray, LAN DNS и ${isKeenetic ? 'Keenetic hook' : 'nftables'}.` : 'Перед включением активного режима мастер сохранит снимок текущего состояния.'}</p>
     </div>
     <div class="split-actions">
       <button class="btn secondary" type="button" data-action="rollbackSetupWizard" ${snapshot && !state.setupApplying && !state.setupRollbacking ? '' : 'disabled'}>${state.setupRollbacking ? 'Откатываю...' : 'Откатить изменения'}</button>

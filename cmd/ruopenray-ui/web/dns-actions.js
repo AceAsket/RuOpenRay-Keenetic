@@ -289,7 +289,10 @@ export function createDnsActions({
         })
       });
       syncLanDnsStatus(result);
-      state.message = result.ok ? 'LAN DNS настроен, dnsmasq обновлен' : (result.error || 'Не удалось настроить LAN DNS');
+      const isKeenetic = result.platform === 'keenetic';
+      state.message = result.ok
+        ? (isKeenetic ? 'LAN DNS проверен: KeeneticOS DNS read-only' : 'LAN DNS настроен, dnsmasq обновлен')
+        : (result.error || 'Не удалось настроить LAN DNS');
     } finally {
       state.lanDnsSaving = false;
       render();

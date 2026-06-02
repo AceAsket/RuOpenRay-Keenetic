@@ -90,12 +90,13 @@ function diagnosticsTrafficView() {
 function clientTrafficTestView() {
   const baseline = state.clientTrafficBaseline;
   const result = state.clientTrafficResult;
+  const isKeenetic = state.firewallStatus?.platform === 'keenetic';
   return `
     <section class="panel client-traffic-test">
       <div class="panel-title">
         <div>
           <h2>Клиентский тест трафика</h2>
-          <span>Самый честный тест transparent proxy: открыть URL с телефона/ПК в LAN и проверить, выросли ли nft/Xray счетчики.</span>
+          <span>${isKeenetic ? 'Самый честный тест transparent proxy: открыть URL с телефона/ПК в LAN и проверить, выросли ли firewall/Xray счетчики.' : 'Самый честный тест transparent proxy: открыть URL с телефона/ПК в LAN и проверить, выросли ли nft/Xray счетчики.'}</span>
         </div>
         <div class="split-actions">
           <button class="btn secondary ${state.busyAction === 'startClientTrafficTest' ? 'is-busy' : ''}" type="button" data-action="startClientTrafficTest" ${state.busyAction === 'startClientTrafficTest' ? 'disabled' : ''}>${state.busyAction === 'startClientTrafficTest' ? 'Начинаю...' : 'Начать замер'}</button>
@@ -105,7 +106,7 @@ function clientTrafficTestView() {
       <div class="client-test-grid">
         <article>
           <strong>1. Начните замер</strong>
-          <span>RuOpenRay запомнит текущие nftables и Xray stats.</span>
+          <span>${isKeenetic ? 'RuOpenRay запомнит текущие firewall counters и Xray stats.' : 'RuOpenRay запомнит текущие nftables и Xray stats.'}</span>
         </article>
         <article>
           <strong>2. Откройте с LAN-устройства</strong>
@@ -271,12 +272,13 @@ function diagnosticsDpiView() {
 function diagnosticsChainView() {
   const result = state.diagnosticsChainResult;
   const steps = result?.steps || [];
+  const isKeenetic = state.firewallStatus?.platform === 'keenetic' || state.lanDnsStatus?.platform === 'keenetic';
   return `
     <section class="panel chain-diagnostics">
       <div class="panel-title">
         <div>
           <h2>Проверка цепочки подключения</h2>
-          <span>Проверяет Xray config, LAN DNS, dnsmasq, nftables, policy routing, запрос с роутера и Xray stats.</span>
+          <span>${isKeenetic ? 'Проверяет Xray config, LAN DNS, Keenetic hook, policy routing, запрос с роутера и Xray stats.' : 'Проверяет Xray config, LAN DNS, dnsmasq, nftables, policy routing, запрос с роутера и Xray stats.'}</span>
         </div>
         <button class="btn" type="button" data-action="runConnectivityDiagnostics" ${state.diagnosticsChainRunning ? 'disabled' : ''}>${state.diagnosticsChainRunning ? 'Проверяю...' : 'Проверить цепочку'}</button>
       </div>

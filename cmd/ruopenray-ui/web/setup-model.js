@@ -68,9 +68,9 @@ export function createSetupModel({
         warn: Boolean(dnsReadiness.inbound || lanDns.mode === 'upstream'),
         title: 'LAN DNS',
         detail: lanDns.mode === 'xray'
-          ? 'dnsmasq направлен на Xray DNS.'
+          ? (isKeenetic ? 'KeeneticOS DNS через Xray пока настраивается через firewall DNS intercept.' : 'dnsmasq направлен на Xray DNS.')
           : lanDns.mode === 'upstream'
-            ? `dnsmasq направлен на внешний DNS: ${(lanDns.servers || []).join(', ') || state.lanDnsUpstream || 'не задан'}`
+            ? (isKeenetic ? `KeeneticOS upstream: ${(lanDns.servers || []).join(', ') || state.lanDnsUpstream || 'не задан'}` : `dnsmasq направлен на внешний DNS: ${(lanDns.servers || []).join(', ') || state.lanDnsUpstream || 'не задан'}`)
             : 'Можно оставить KeeneticOS DNS как есть или направить DNS на Xray.'
       }
     ];

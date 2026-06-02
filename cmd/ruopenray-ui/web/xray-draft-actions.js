@@ -184,7 +184,9 @@ export function createXrayDraftActions({
       next.routing.rules.unshift(dnsRule);
     }
     syncConfig(next);
-    state.message = `DNS inbound подготовлен в черновике. После применения dnsmasq можно направить на 127.0.0.1#${dnsPort}.`;
+    state.message = state.lanDnsStatus?.platform === 'keenetic'
+      ? `DNS inbound подготовлен в черновике. После применения Keenetic DNS intercept можно держать на 127.0.0.1#${dnsPort}.`
+      : `DNS inbound подготовлен в черновике. После применения dnsmasq можно направить на 127.0.0.1#${dnsPort}.`;
     render();
   }
 

@@ -13,6 +13,9 @@ import (
 )
 
 func (s *serverState) lanDNSUpstreamStatus(plan map[string]any) map[string]any {
+	if s.cfg.isKeenetic() {
+		return s.keeneticLANDNSUpstreamStatus(plan)
+	}
 	available := runtime.GOOS != "windows" && commandExists("uci")
 	xrayTarget := s.xrayDNSUpstreamTarget()
 	targetOwner := ""
@@ -79,6 +82,140 @@ func (s *serverState) lanDNSUpstreamStatus(plan map[string]any) map[string]any {
 		result["plan"] = plan
 	}
 	return result
+}
+
+func (s *serverState) keeneticLANDNSUpstreamStatus(plan map[string]any) map[string]any {
+	xrayTarget := s.xrayDNSUpstreamTarget()
+	targetOwner := ""
+	targetConflict := false
+	targetFound := false
+	if cfg, err := s.readActiveConfig(); err == nil {
+		host, port, found := xrayDNSInboundEndpoint(cfg)
+		if found {
+			targetFound = true
+			xrayTarget = fmt.Sprintf("%s#%d", host, port)
+			targetOwner = udpPortOwner(host, port)
+			targetConflict = targetOwner != "" && !strings.Contains(targetOwner, "/xray")
+		}
+	}
+	suggestedPort, conflictOwner := suggestedXrayDNSPort()
+	if targetConflict {
+		conflictOwner = targetOwner
+	}
+	dnsPortConflict := targetConflict || (!targetFound && conflictOwner != "")
+	servers := keeneticNameServers()
+	mode := "system"
+	if len(servers) == 0 {
+		mode = "unknown"
+	}
+	result := map[string]any{
+		"ok":                   true,
+		"available":            true,
+		"configurable":         false,
+		"platform":             "keenetic",
+		"adapter":              "keenetic-dns-proxy",
+		"mode":                 mode,
+		"noresolv":             false,
+		"servers":              servers,
+		"routerLan":            keeneticRouterLANAddress(),
+		"xrayTarget":           xrayTarget,
+		"suggestedXrayPort":    suggestedPort,
+		"suggestedXrayTarget":  fmt.Sprintf("127.0.0.1#%d", suggestedPort),
+		"dnsPortConflict":      dnsPortConflict,
+		"dnsPortConflictOwner": conflictOwner,
+		"xrayPortConflict":     targetConflict,
+		"xrayPortOwner":        targetOwner,
+		"readiness":            s.lanDNSReadiness(),
+		"hint":                 "KeeneticOS DNS proxy обнаружен. Автоматическое изменение DNS в KeeneticOS пока выключено; используйте перехват DNS в firewall или настройте DNS в родной панели Keenetic.",
+	}
+	if plan != nil {
+		result["plan"] = plan
+	}
+	return result
+}
+
+func keeneticRouterLANAddress() string {
+	for _, command := range [][]string{
+		{"/bin/ndmc", "-c", "show interface Home"},
+		{"/bin/ndmc", "-c", "show interface Bridge0"},
+		{"ndmc", "-c", "show interface Home"},
+	} {
+		if strings.Contains(command[0], "/") {
+			if _, err := os.Stat(command[0]); err != nil {
+				continue
+			}
+		} else if !commandExists(command[0]) {
+			continue
+		}
+		out := runTimeout(3*time.Second, command[0], command[1:]...)
+		if address := parseKeeneticInterfaceAddress(fmt.Sprint(out["stdout"])); address != "" {
+			return address
+		}
+	}
+	return "192.168.1.1"
+}
+
+func parseKeeneticInterfaceAddress(text string) string {
+	for _, line := range strings.Split(text, "\n") {
+		key, value, ok := strings.Cut(strings.TrimSpace(strings.TrimPrefix(line, "\x1b[K")), ":")
+		if ok && strings.TrimSpace(strings.ToLower(key)) == "address" {
+			address := strings.TrimSpace(value)
+			if net.ParseIP(address) != nil {
+				return address
+			}
+		}
+	}
+	return ""
+}
+
+func keeneticNameServers() []string {
+	servers := []string{}
+	seen := map[string]bool{}
+	add := func(value string) {
+		value = strings.TrimSpace(value)
+		if value == "" || value == "<nil>" || seen[value] {
+			return
+		}
+		seen[value] = true
+		servers = append(servers, value)
+	}
+	for _, command := range [][]string{
+		{"/bin/ndmc", "-c", "show ip name-server"},
+		{"ndmc", "-c", "show ip name-server"},
+	} {
+		if strings.Contains(command[0], "/") {
+			if _, err := os.Stat(command[0]); err != nil {
+				continue
+			}
+		} else if !commandExists(command[0]) {
+			continue
+		}
+		out := runTimeout(3*time.Second, command[0], command[1:]...)
+		if out["ok"] != true {
+			continue
+		}
+		for _, server := range parseKeeneticNameServers(fmt.Sprint(out["stdout"])) {
+			add(server)
+		}
+		if len(servers) > 0 {
+			return servers
+		}
+	}
+	return servers
+}
+
+func parseKeeneticNameServers(text string) []string {
+	servers := []string{}
+	for _, line := range strings.Split(text, "\n") {
+		key, value, ok := strings.Cut(strings.TrimSpace(strings.TrimPrefix(line, "\x1b[K")), ":")
+		if ok && strings.TrimSpace(strings.ToLower(key)) == "address" {
+			server := strings.TrimSpace(value)
+			if server != "" {
+				servers = append(servers, server)
+			}
+		}
+	}
+	return servers
 }
 
 func (s *serverState) dnsDiagnostics() map[string]any {
@@ -227,7 +364,31 @@ func dnsmasqServerList() []string {
 
 func (s *serverState) applyLANDNSUpstream(payload map[string]any) map[string]any {
 	if s.cfg.isKeenetic() {
-		return map[string]any{"ok": false, "available": false, "error": "KeeneticOS DNS adapter пока не реализован; OpenWrt UCI/dnsmasq действия отключены"}
+		mode := strings.TrimSpace(fmt.Sprint(payload["mode"]))
+		if mode == "" {
+			mode = "xray"
+		}
+		upstream := fmt.Sprint(payload["upstream"])
+		if mode == "xray" && strings.TrimSpace(upstream) == "" {
+			upstream = s.xrayDNSUpstreamTarget()
+		}
+		plan := map[string]any{
+			"mode":     mode,
+			"upstream": upstream,
+			"commands": []string{
+				"# KeeneticOS DNS proxy is read-only in RuOpenRay for now.",
+				"# Use Firewall -> DNS intercept, or configure DNS manually in Keenetic Web UI.",
+			},
+		}
+		status := s.keeneticLANDNSUpstreamStatus(plan)
+		if boolPayload(payload, "dryRun", false) {
+			status["ok"] = true
+			status["dryRun"] = true
+			return status
+		}
+		status["ok"] = false
+		status["error"] = "Автоматическое изменение DNS в KeeneticOS пока выключено. Используйте перехват DNS в firewall или настройте DNS вручную в панели Keenetic."
+		return status
 	}
 	if runtime.GOOS == "windows" || !commandExists("uci") {
 		return map[string]any{"ok": false, "available": false, "error": "UCI недоступен на этой системе"}

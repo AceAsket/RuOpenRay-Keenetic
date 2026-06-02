@@ -106,8 +106,9 @@ export function createSetupActions({
 
       if (state.setupLanDnsMode !== 'keep') {
         const readiness = await waitForLanDnsReadiness();
+        const lanDnsStepTitle = state.lanDnsStatus?.platform === 'keenetic' ? 'LAN DNS / KeeneticOS' : 'LAN DNS / dnsmasq';
         if (state.setupLanDnsMode === 'xray' && !readiness?.readiness?.ready) {
-          pushStep(false, 'LAN DNS / dnsmasq', 'DNS inbound Xray еще не слушает 127.0.0.1:10535. Повторите после перезапуска Xray.');
+          pushStep(false, lanDnsStepTitle, 'DNS inbound Xray еще не слушает 127.0.0.1:10535. Повторите после перезапуска Xray.');
           throw new Error('DNS inbound Xray еще не готов');
         }
         const lanDns = await request('/api/dns/lan-upstream', {
@@ -126,7 +127,7 @@ export function createSetupActions({
           if (afterLanDns) syncLanDnsStatus(afterLanDns);
           lanDnsOk = Boolean(afterLanDns?.mode === state.setupLanDnsMode && (state.setupLanDnsMode !== 'xray' || afterLanDns?.readiness?.ready));
         }
-        pushStep(lanDnsOk, 'LAN DNS / dnsmasq', lanDns.mode ? lanDnsModeLabel(lanDns.mode) : (lanDns.error || ''));
+        pushStep(lanDnsOk, lanDns.platform === 'keenetic' ? 'LAN DNS / KeeneticOS' : lanDnsStepTitle, lanDns.mode ? lanDnsModeLabel(lanDns.mode) : (lanDns.error || ''));
         if (!lanDnsOk) throw new Error(lanDns.error || 'Не удалось настроить LAN DNS');
       } else {
         pushStep(true, 'LAN DNS', 'Оставлен текущий режим KeeneticOS.');
