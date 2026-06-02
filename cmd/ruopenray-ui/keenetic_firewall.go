@@ -16,24 +16,64 @@ const (
 )
 
 const keeneticRedirectHookScript = `#!/bin/sh
-# RuOpenRay Keenetic REDIRECT hook. Author: AceAsket.
+# RuOpenRay Keenetic proxy hook. Author: AceAsket.
 IPT="/opt/sbin/iptables"
 [ -x "$IPT" ] || IPT="/opt/bin/iptables"
 [ -x "$IPT" ] || IPT="iptables"
 LAN_IF="${RUOPENRAY_LAN_IF:-br0}"
+MODE="${RUOPENRAY_ROUTER_MODE:-redirect}"
 PORT="${RUOPENRAY_TRANSPARENT_PORT:-52345}"
 CHAIN="RUOPENRAY"
+TPROXY_CHAIN="RUOPENRAY_TPROXY"
 QUIC_CHAIN="RUOPENRAY_QUIC"
 BLOCK_QUIC="${RUOPENRAY_BLOCK_QUIC:-1}"
+TPROXY_MARK="${RUOPENRAY_TPROXY_MARK:-0x111}"
+TPROXY_TABLE="${RUOPENRAY_TPROXY_TABLE:-111}"
+PORTS="${RUOPENRAY_PORTS:-80 443}"
+
+load_tproxy_modules() {
+  KVER="$(uname -r)"
+  insmod "/lib/modules/$KVER/xt_socket.ko" 2>/dev/null || true
+  insmod "/lib/modules/$KVER/xt_TPROXY.ko" 2>/dev/null || true
+}
+
+remove_jump_rules() {
+  table="$1"
+  chain="$2"
+  target="$3"
+  "$IPT" -t "$table" -S "$chain" 2>/dev/null | while IFS= read -r line; do
+    case "$line" in
+      *" -j $target"*)
+        rule="${line#-A $chain }"
+        "$IPT" -t "$table" -D "$chain" $rule 2>/dev/null || true
+      ;;
+    esac
+  done
+}
 
 cleanup() {
+  remove_jump_rules nat PREROUTING "$CHAIN"
+  remove_jump_rules mangle PREROUTING "$TPROXY_CHAIN"
+  remove_jump_rules filter FORWARD "$QUIC_CHAIN"
   while "$IPT" -t nat -D PREROUTING -i "$LAN_IF" -p tcp --dport 80 -j "$CHAIN" 2>/dev/null; do :; done
   while "$IPT" -t nat -D PREROUTING -i "$LAN_IF" -p tcp --dport 443 -j "$CHAIN" 2>/dev/null; do :; done
+  while "$IPT" -t nat -D PREROUTING -i "$LAN_IF" -p tcp -j "$CHAIN" 2>/dev/null; do :; done
+  while "$IPT" -t mangle -D PREROUTING -i "$LAN_IF" -p tcp -j "$TPROXY_CHAIN" 2>/dev/null; do :; done
+  while "$IPT" -t mangle -D PREROUTING -i "$LAN_IF" -p udp -j "$TPROXY_CHAIN" 2>/dev/null; do :; done
+  for item in $PORTS; do
+    while "$IPT" -t nat -D PREROUTING -i "$LAN_IF" -p tcp --dport "$item" -j "$CHAIN" 2>/dev/null; do :; done
+    while "$IPT" -t mangle -D PREROUTING -i "$LAN_IF" -p tcp --dport "$item" -j "$TPROXY_CHAIN" 2>/dev/null; do :; done
+    while "$IPT" -t mangle -D PREROUTING -i "$LAN_IF" -p udp --dport "$item" -j "$TPROXY_CHAIN" 2>/dev/null; do :; done
+  done
   while "$IPT" -t filter -D FORWARD -i "$LAN_IF" -p udp --dport 443 -j "$QUIC_CHAIN" 2>/dev/null; do :; done
   "$IPT" -t nat -F "$CHAIN" 2>/dev/null || true
   "$IPT" -t nat -X "$CHAIN" 2>/dev/null || true
+  "$IPT" -t mangle -F "$TPROXY_CHAIN" 2>/dev/null || true
+  "$IPT" -t mangle -X "$TPROXY_CHAIN" 2>/dev/null || true
   "$IPT" -t filter -F "$QUIC_CHAIN" 2>/dev/null || true
   "$IPT" -t filter -X "$QUIC_CHAIN" 2>/dev/null || true
+  ip rule del fwmark "$TPROXY_MARK" lookup "$TPROXY_TABLE" 2>/dev/null || true
+  ip route flush table "$TPROXY_TABLE" 2>/dev/null || true
 }
 
 add_private_returns() {
@@ -49,11 +89,40 @@ add_private_returns() {
 }
 
 cleanup
-"$IPT" -t nat -N "$CHAIN"
-add_private_returns nat "$CHAIN"
-"$IPT" -t nat -A "$CHAIN" -p tcp -j REDIRECT --to-ports "$PORT"
-"$IPT" -t nat -I PREROUTING 1 -i "$LAN_IF" -p tcp --dport 443 -j "$CHAIN"
-"$IPT" -t nat -I PREROUTING 1 -i "$LAN_IF" -p tcp --dport 80 -j "$CHAIN"
+
+if [ "$MODE" = "tproxy" ]; then
+  load_tproxy_modules
+  ip route add local 0.0.0.0/0 dev lo table "$TPROXY_TABLE" 2>/dev/null || true
+  ip rule add fwmark "$TPROXY_MARK" lookup "$TPROXY_TABLE" 2>/dev/null || true
+  "$IPT" -t mangle -N "$TPROXY_CHAIN"
+  add_private_returns mangle "$TPROXY_CHAIN"
+  "$IPT" -t mangle -A "$TPROXY_CHAIN" -p tcp -m socket --transparent -j MARK --set-mark "$TPROXY_MARK"
+  "$IPT" -t mangle -A "$TPROXY_CHAIN" -p udp -m socket --transparent -j MARK --set-mark "$TPROXY_MARK"
+  "$IPT" -t mangle -A "$TPROXY_CHAIN" -p tcp -m mark ! --mark 0 -j CONNMARK --save-mark
+  "$IPT" -t mangle -A "$TPROXY_CHAIN" -p udp -m mark ! --mark 0 -j CONNMARK --save-mark
+  "$IPT" -t mangle -A "$TPROXY_CHAIN" -p tcp -j TPROXY --on-ip 127.0.0.1 --on-port "$PORT" --tproxy-mark "$TPROXY_MARK"
+  "$IPT" -t mangle -A "$TPROXY_CHAIN" -p udp -j TPROXY --on-ip 127.0.0.1 --on-port "$PORT" --tproxy-mark "$TPROXY_MARK"
+  if [ "$PORTS" = "all" ]; then
+    "$IPT" -t mangle -I PREROUTING 1 -i "$LAN_IF" -p udp -j "$TPROXY_CHAIN"
+    "$IPT" -t mangle -I PREROUTING 1 -i "$LAN_IF" -p tcp -j "$TPROXY_CHAIN"
+  else
+    for item in $PORTS; do
+      "$IPT" -t mangle -I PREROUTING 1 -i "$LAN_IF" -p udp --dport "$item" -j "$TPROXY_CHAIN"
+      "$IPT" -t mangle -I PREROUTING 1 -i "$LAN_IF" -p tcp --dport "$item" -j "$TPROXY_CHAIN"
+    done
+  fi
+else
+  "$IPT" -t nat -N "$CHAIN"
+  add_private_returns nat "$CHAIN"
+  "$IPT" -t nat -A "$CHAIN" -p tcp -j REDIRECT --to-ports "$PORT"
+  if [ "$PORTS" = "all" ]; then
+    "$IPT" -t nat -I PREROUTING 1 -i "$LAN_IF" -p tcp -j "$CHAIN"
+  else
+    for item in $PORTS; do
+      "$IPT" -t nat -I PREROUTING 1 -i "$LAN_IF" -p tcp --dport "$item" -j "$CHAIN"
+    done
+  fi
+fi
 
 if [ "$BLOCK_QUIC" = "1" ]; then
   "$IPT" -t filter -N "$QUIC_CHAIN"
@@ -64,21 +133,52 @@ fi
 `
 
 const keeneticRedirectDisableScript = `#!/bin/sh
-# Disable RuOpenRay Keenetic REDIRECT rules. Author: AceAsket.
+# Disable RuOpenRay Keenetic proxy rules. Author: AceAsket.
 IPT="/opt/sbin/iptables"
 [ -x "$IPT" ] || IPT="/opt/bin/iptables"
 [ -x "$IPT" ] || IPT="iptables"
 LAN_IF="${RUOPENRAY_LAN_IF:-br0}"
 CHAIN="RUOPENRAY"
+TPROXY_CHAIN="RUOPENRAY_TPROXY"
 QUIC_CHAIN="RUOPENRAY_QUIC"
+TPROXY_MARK="${RUOPENRAY_TPROXY_MARK:-0x111}"
+TPROXY_TABLE="${RUOPENRAY_TPROXY_TABLE:-111}"
 
+remove_jump_rules() {
+  table="$1"
+  chain="$2"
+  target="$3"
+  "$IPT" -t "$table" -S "$chain" 2>/dev/null | while IFS= read -r line; do
+    case "$line" in
+      *" -j $target"*)
+        rule="${line#-A $chain }"
+        "$IPT" -t "$table" -D "$chain" $rule 2>/dev/null || true
+      ;;
+    esac
+  done
+}
+
+remove_jump_rules nat PREROUTING "$CHAIN"
+remove_jump_rules mangle PREROUTING "$TPROXY_CHAIN"
+remove_jump_rules filter FORWARD "$QUIC_CHAIN"
 while "$IPT" -t nat -D PREROUTING -i "$LAN_IF" -p tcp --dport 80 -j "$CHAIN" 2>/dev/null; do :; done
 while "$IPT" -t nat -D PREROUTING -i "$LAN_IF" -p tcp --dport 443 -j "$CHAIN" 2>/dev/null; do :; done
+while "$IPT" -t nat -D PREROUTING -i "$LAN_IF" -p tcp -j "$CHAIN" 2>/dev/null; do :; done
+while "$IPT" -t mangle -D PREROUTING -i "$LAN_IF" -p tcp -j "$TPROXY_CHAIN" 2>/dev/null; do :; done
+while "$IPT" -t mangle -D PREROUTING -i "$LAN_IF" -p udp -j "$TPROXY_CHAIN" 2>/dev/null; do :; done
+for item in 1 2 3 4 5 6 7 8 9 10; do
+  while "$IPT" -t mangle -D PREROUTING -i "$LAN_IF" -p tcp -j "$TPROXY_CHAIN" 2>/dev/null; do :; done
+  while "$IPT" -t mangle -D PREROUTING -i "$LAN_IF" -p udp -j "$TPROXY_CHAIN" 2>/dev/null; do :; done
+done
 while "$IPT" -t filter -D FORWARD -i "$LAN_IF" -p udp --dport 443 -j "$QUIC_CHAIN" 2>/dev/null; do :; done
 "$IPT" -t nat -F "$CHAIN" 2>/dev/null || true
 "$IPT" -t nat -X "$CHAIN" 2>/dev/null || true
+"$IPT" -t mangle -F "$TPROXY_CHAIN" 2>/dev/null || true
+"$IPT" -t mangle -X "$TPROXY_CHAIN" 2>/dev/null || true
 "$IPT" -t filter -F "$QUIC_CHAIN" 2>/dev/null || true
 "$IPT" -t filter -X "$QUIC_CHAIN" 2>/dev/null || true
+ip rule del fwmark "$TPROXY_MARK" lookup "$TPROXY_TABLE" 2>/dev/null || true
+ip route flush table "$TPROXY_TABLE" 2>/dev/null || true
 `
 
 func keeneticExecutable(candidates ...string) string {
@@ -138,13 +238,30 @@ func keeneticTPROXYTargetStatus() map[string]any {
 		"required":    required,
 		"installed":   []string{},
 		"missing":     required,
-		"unsupported": true,
-		"detail":      "TPROXY target is unavailable on Keenetic; RuOpenRay uses TCP REDIRECT instead",
+		"unsupported": !keeneticTPROXYModulesPresent(),
+		"loadable":    keeneticTPROXYModulesPresent(),
+		"detail":      "TPROXY target is not loaded; RuOpenRay can load xt_socket/xt_TPROXY on Keenetic if kernel modules are present",
 	}
 }
 
+func keeneticTPROXYModulesPresent() bool {
+	kernel := strings.TrimSpace(fmt.Sprint(runTimeout(3*time.Second, "uname", "-r")["stdout"]))
+	if kernel == "" || kernel == "<nil>" {
+		return false
+	}
+	for _, path := range []string{
+		"/lib/modules/" + kernel + "/xt_socket.ko",
+		"/lib/modules/" + kernel + "/xt_TPROXY.ko",
+	} {
+		if _, err := os.Stat(path); err != nil {
+			return false
+		}
+	}
+	return true
+}
+
 func parseKeeneticRedirectPort(text string) int {
-	for _, marker := range []string{"--to-ports ", "--to-port "} {
+	for _, marker := range []string{"--to-ports ", "--to-port ", "--on-port "} {
 		index := strings.Index(text, marker)
 		if index < 0 {
 			continue
@@ -202,13 +319,36 @@ func parseKeeneticLANInterface(prerouting string) string {
 	return "br0"
 }
 
-func keeneticScriptEnv(lanInterface string, transparentPort int, blockQuic bool) string {
+func keeneticFirewallPorts(payload map[string]any) []string {
+	if fmt.Sprint(payload["portMode"]) == "all" {
+		return []string{"all"}
+	}
+	ports := stringList(payload["ports"])
+	if len(ports) == 0 {
+		ports = []string{"80", "443"}
+	}
+	return ports
+}
+
+func keeneticPortsEnvValue(ports []string) string {
+	if len(ports) == 1 && ports[0] == "all" {
+		return "all"
+	}
+	return strings.Join(ports, " ")
+}
+
+func keeneticScriptEnv(routerMode string, lanInterface string, transparentPort int, ports []string, blockQuic bool) string {
 	block := "0"
 	if blockQuic {
 		block = "1"
 	}
-	return "RUOPENRAY_LAN_IF=" + singleQuote(lanInterface) +
+	if routerMode != "tproxy" {
+		routerMode = "redirect"
+	}
+	return "RUOPENRAY_ROUTER_MODE=" + singleQuote(routerMode) +
+		" RUOPENRAY_LAN_IF=" + singleQuote(lanInterface) +
 		" RUOPENRAY_TRANSPARENT_PORT=" + singleQuote(strconv.Itoa(transparentPort)) +
+		" RUOPENRAY_PORTS=" + singleQuote(keeneticPortsEnvValue(ports)) +
 		" RUOPENRAY_BLOCK_QUIC=" + singleQuote(block)
 }
 
@@ -224,23 +364,37 @@ func (s *serverState) keeneticFirewallStatus() map[string]any {
 	available := runtime.GOOS != "windows" && iptables != ""
 	natChain := map[string]any{"ok": false, "stderr": "iptables unavailable"}
 	natPrerouting := map[string]any{"ok": false, "stderr": "iptables unavailable"}
+	mangleChain := map[string]any{"ok": false, "stderr": "iptables unavailable"}
+	manglePrerouting := map[string]any{"ok": false, "stderr": "iptables unavailable"}
 	filterChain := map[string]any{"ok": false, "stderr": "iptables unavailable"}
 	filterForward := map[string]any{"ok": false, "stderr": "iptables unavailable"}
+	ipRules := map[string]any{"ok": false, "stderr": "ip unavailable"}
+	ipRoutes := map[string]any{"ok": false, "stderr": "ip unavailable"}
 	if available {
 		natChain = runTimeout(5*time.Second, iptables, "-t", "nat", "-S", "RUOPENRAY")
 		natPrerouting = runTimeout(5*time.Second, iptables, "-t", "nat", "-S", "PREROUTING")
+		mangleChain = runTimeout(5*time.Second, iptables, "-t", "mangle", "-S", "RUOPENRAY_TPROXY")
+		manglePrerouting = runTimeout(5*time.Second, iptables, "-t", "mangle", "-S", "PREROUTING")
 		filterChain = runTimeout(5*time.Second, iptables, "-t", "filter", "-S", "RUOPENRAY_QUIC")
 		filterForward = runTimeout(5*time.Second, iptables, "-t", "filter", "-S", "FORWARD")
+		ipRules = runTimeout(5*time.Second, "ip", "rule", "show")
+		ipRoutes = runTimeout(5*time.Second, "ip", "route", "show", "table", "111")
 	}
 	natChainText := fmt.Sprint(natChain["stdout"])
 	natPreroutingText := fmt.Sprint(natPrerouting["stdout"])
+	mangleChainText := fmt.Sprint(mangleChain["stdout"])
+	manglePreroutingText := fmt.Sprint(manglePrerouting["stdout"])
 	filterChainText := fmt.Sprint(filterChain["stdout"])
 	filterForwardText := fmt.Sprint(filterForward["stdout"])
-	active := natChain["ok"] == true &&
+	redirectActive := natChain["ok"] == true &&
 		strings.Contains(natChainText, "REDIRECT") &&
 		strings.Contains(natPreroutingText, "--dport 80") &&
 		strings.Contains(natPreroutingText, "--dport 443") &&
 		strings.Contains(natPreroutingText, "-j RUOPENRAY")
+	tproxyActive := mangleChain["ok"] == true &&
+		strings.Contains(mangleChainText, "TPROXY") &&
+		strings.Contains(manglePreroutingText, "-j RUOPENRAY_TPROXY")
+	active := redirectActive || tproxyActive
 	blockQuic := filterChain["ok"] == true &&
 		strings.Contains(filterChainText, "REJECT") &&
 		strings.Contains(filterForwardText, "-j RUOPENRAY_QUIC")
@@ -253,13 +407,27 @@ func (s *serverState) keeneticFirewallStatus() map[string]any {
 		disableScript = true
 	}
 	lanInterface := parseKeeneticLANInterface(natPreroutingText)
-	transparentPort := parseKeeneticRedirectPort(natChainText)
+	if tproxyActive {
+		lanInterface = parseKeeneticLANInterface(manglePreroutingText)
+	}
+	transparentPort := parseKeeneticRedirectPort(natChainText + "\n" + mangleChainText)
 	ports := parseKeeneticRedirectPorts(natPreroutingText)
+	if tproxyActive {
+		ports = parseKeeneticRedirectPorts(manglePreroutingText)
+	}
+	routerMode := "redirect"
+	if tproxyActive {
+		routerMode = "tproxy"
+	}
+	ipRulesText := fmt.Sprint(ipRules["stdout"])
+	ipRoutesText := fmt.Sprint(ipRoutes["stdout"])
+	ipRuleActive := strings.Contains(ipRulesText, "fwmark 0x111") && strings.Contains(ipRulesText, "lookup 111")
+	ipRouteActive := strings.Contains(ipRoutesText, "local") && strings.Contains(ipRoutesText, "dev lo")
 	status := map[string]any{
 		"ok":              true,
 		"available":       available,
 		"platform":        s.cfg.Platform,
-		"routerMode":      "redirect",
+		"routerMode":      routerMode,
 		"bypassMode":      "off",
 		"deviceMode":      "all",
 		"portMode":        "custom",
@@ -275,19 +443,25 @@ func (s *serverState) keeneticFirewallStatus() map[string]any {
 		"disablePath":     keeneticRedirectDisablePath,
 		"disableScript":   disableScript,
 		"iptablesPath":    iptables,
+		"ipRule":          routerMode != "tproxy" || ipRuleActive,
+		"ipRoute":         routerMode != "tproxy" || ipRouteActive,
 		"iptables": map[string]any{
-			"natChain":      natChain,
-			"natPrerouting": natPrerouting,
-			"filterChain":   filterChain,
-			"filterForward": filterForward,
+			"natChain":         natChain,
+			"natPrerouting":    natPrerouting,
+			"mangleChain":      mangleChain,
+			"manglePrerouting": manglePrerouting,
+			"filterChain":      filterChain,
+			"filterForward":    filterForward,
 		},
+		"ipRules":             ipRules,
+		"ipRoutes":            ipRoutes,
 		"tproxyModules":       keeneticTPROXYTargetStatus(),
 		"killSwitchNftset":    map[string]any{"available": false, "active": false, "count": 0, "domains": []string{}},
 		"killSwitchDNSBlock":  map[string]any{"available": false, "active": false, "count": 0, "domains": []string{}},
 		"directNftset":        map[string]any{"available": false, "active": false, "count": 0, "domains": []string{}},
 		"proxyNftset":         map[string]any{"available": false, "active": false, "count": 0, "domains": []string{}},
-		"needsPolicyFix":      false,
-		"supportedTransports": []string{"tcp"},
+		"needsPolicyFix":      routerMode == "tproxy" && (!ipRuleActive || !ipRouteActive),
+		"supportedTransports": []string{"tcp", "udp"},
 	}
 	if !available {
 		status["message"] = "iptables is unavailable in Entware; install it with: opkg install iptables"
@@ -300,12 +474,17 @@ func (s *serverState) previewKeeneticFirewall(payload map[string]any) map[string
 	if transparentPort <= 0 || transparentPort > 65535 {
 		transparentPort = 52345
 	}
+	routerMode := strings.TrimSpace(fmt.Sprint(payload["routerMode"]))
+	if routerMode != "tproxy" {
+		routerMode = "redirect"
+	}
 	lanInterface := strings.TrimSpace(fmt.Sprint(payload["lanInterface"]))
 	if lanInterface == "" || lanInterface == "<nil>" {
 		lanInterface = "br0"
 	}
 	blockQuic := boolPayload(payload, "blockQuic", true)
-	env := keeneticScriptEnv(lanInterface, transparentPort, blockQuic)
+	ports := keeneticFirewallPorts(payload)
+	env := keeneticScriptEnv(routerMode, lanInterface, transparentPort, ports, blockQuic)
 	preview := strings.Join([]string{
 		"opkg install iptables",
 		"mkdir -p /opt/etc/ndm/netfilter.d /opt/etc/ruopenray-ui",
@@ -316,11 +495,11 @@ func (s *serverState) previewKeeneticFirewall(payload map[string]any) map[string
 	return map[string]any{
 		"ok": true,
 		"meta": map[string]any{
-			"routerMode":      "redirect",
+			"routerMode":      routerMode,
 			"bypassMode":      "off",
 			"deviceMode":      "all",
-			"portMode":        "custom",
-			"ports":           []string{"80", "443"},
+			"portMode":        fmt.Sprint(payload["portMode"]),
+			"ports":           ports,
 			"transparentPort": transparentPort,
 			"lanInterface":    lanInterface,
 			"blockQuic":       blockQuic,
@@ -339,6 +518,16 @@ func (s *serverState) applyKeeneticFirewall(payload map[string]any) map[string]a
 	if keeneticIptablesPath() == "" {
 		return map[string]any{"ok": false, "available": false, "error": "iptables not found; install Entware package: opkg install iptables", "status": s.firewallStatus()}
 	}
+	routerMode := strings.TrimSpace(fmt.Sprint(payload["routerMode"]))
+	if routerMode != "tproxy" {
+		routerMode = "redirect"
+	}
+	if routerMode == "tproxy" {
+		tproxy := keeneticTPROXYTargetStatus()
+		if tproxy["ok"] != true && tproxy["loadable"] != true {
+			return map[string]any{"ok": false, "available": false, "error": "TPROXY kernel module is unavailable on this Keenetic", "status": s.firewallStatus(), "tproxyModules": tproxy}
+		}
+	}
 	transparentPort := int(numberAny(payload["transparentPort"]))
 	if transparentPort <= 0 || transparentPort > 65535 {
 		transparentPort = 52345
@@ -348,15 +537,19 @@ func (s *serverState) applyKeeneticFirewall(payload map[string]any) map[string]a
 		lanInterface = "br0"
 	}
 	blockQuic := boolPayload(payload, "blockQuic", true)
+	ports := keeneticFirewallPorts(payload)
 	if err := writeExecutableFile(keeneticRedirectHookPath, keeneticRedirectHookScript); err != nil {
 		return map[string]any{"ok": false, "error": err.Error(), "status": s.firewallStatus()}
 	}
 	if err := writeExecutableFile(keeneticRedirectDisablePath, keeneticRedirectDisableScript); err != nil {
 		return map[string]any{"ok": false, "error": err.Error(), "status": s.firewallStatus()}
 	}
-	step := runTimeout(15*time.Second, "sh", "-c", keeneticScriptEnv(lanInterface, transparentPort, blockQuic)+" "+singleQuote(keeneticRedirectHookPath))
+	step := runTimeout(15*time.Second, "sh", "-c", keeneticScriptEnv(routerMode, lanInterface, transparentPort, ports, blockQuic)+" "+singleQuote(keeneticRedirectHookPath))
 	status := s.firewallStatus()
-	ok := step["ok"] == true && status["active"] == true && status["persistent"] == true
+	ok := step["ok"] == true && status["active"] == true && status["persistent"] == true && status["routerMode"] == routerMode
+	if routerMode == "tproxy" {
+		ok = ok && status["ipRule"] == true && status["ipRoute"] == true
+	}
 	if blockQuic {
 		ok = ok && status["blockQuic"] == true
 	}
@@ -365,11 +558,11 @@ func (s *serverState) applyKeeneticFirewall(payload map[string]any) map[string]a
 		"steps":  []map[string]any{step},
 		"status": status,
 		"meta": map[string]any{
-			"routerMode":      "redirect",
+			"routerMode":      routerMode,
 			"bypassMode":      "off",
 			"deviceMode":      "all",
-			"portMode":        "custom",
-			"ports":           []string{"80", "443"},
+			"portMode":        fmt.Sprint(payload["portMode"]),
+			"ports":           ports,
 			"transparentPort": transparentPort,
 			"lanInterface":    lanInterface,
 			"blockQuic":       blockQuic,

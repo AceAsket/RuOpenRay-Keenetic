@@ -105,6 +105,25 @@ func TestParseKeeneticRedirectStatusPieces(t *testing.T) {
 	}
 }
 
+func TestParseKeeneticTProxyStatusPieces(t *testing.T) {
+	mangleChain := `-N RUOPENRAY_TPROXY
+-A RUOPENRAY_TPROXY -d 10.0.0.0/8 -j RETURN
+-A RUOPENRAY_TPROXY -p tcp -j TPROXY --on-port 52345 --on-ip 127.0.0.1 --tproxy-mark 0x111`
+	prerouting := `-P PREROUTING ACCEPT
+-A PREROUTING -i br0 -p udp -m udp --dport 443 -j RUOPENRAY_TPROXY
+-A PREROUTING -i br0 -p tcp -m tcp --dport 443 -j RUOPENRAY_TPROXY`
+
+	if got := parseKeeneticRedirectPort(mangleChain); got != 52345 {
+		t.Fatalf("transparent port = %d, want 52345", got)
+	}
+	if got := parseKeeneticLANInterface(prerouting); got != "br0" {
+		t.Fatalf("LAN interface = %q, want br0", got)
+	}
+	if got := parseKeeneticRedirectPorts(prerouting); !reflect.DeepEqual(got, []string{"443"}) {
+		t.Fatalf("tproxy ports = %#v, want [443]", got)
+	}
+}
+
 func TestExpandFirewallGeoPayloadAddsGeoTargets(t *testing.T) {
 	geoDir := t.TempDir()
 	writeFirewallGeoFixture(t, geoDir)

@@ -620,7 +620,7 @@ export function createFirewallModel({ state, configInbounds, configOutbounds, ro
     if (!status?.active || !status?.persistent) return false;
     const isKeenetic = status.platform === 'keenetic';
     const routeSets = firewallRouteSets();
-    const expectedRouterMode = isKeenetic ? 'redirect' : (state.firewallRouterMode || 'tproxy');
+    const expectedRouterMode = state.firewallRouterMode || (isKeenetic ? 'redirect' : 'tproxy');
     if (status.routerMode && status.routerMode !== expectedRouterMode) return false;
     if (expectedRouterMode === 'tproxy' && (!status.ipRule || !status.ipRoute)) return false;
     if (status.bypassMode && status.bypassMode !== (state.firewallBypassMode || 'off')) return false;
@@ -673,7 +673,7 @@ export function createFirewallModel({ state, configInbounds, configOutbounds, ro
     const isKeenetic = status.platform === 'keenetic';
     if (!status?.active) reasons.push(isKeenetic ? 'Keenetic REDIRECT hook не активен' : 'nftables-таблица не активна');
     if (!status?.persistent) reasons.push(isKeenetic ? 'Keenetic REDIRECT hook не сохранен в /opt/etc/ndm' : 'правила не сохранены для перезапуска firewall');
-    const expectedRouterMode = isKeenetic ? 'redirect' : (state.firewallRouterMode || 'tproxy');
+    const expectedRouterMode = state.firewallRouterMode || (isKeenetic ? 'redirect' : 'tproxy');
     if (status.routerMode && status.routerMode !== expectedRouterMode) {
       reasons.push(`режим: ${routerModeLabel(status.routerMode)} -> ${routerModeLabel(expectedRouterMode)}`);
     }

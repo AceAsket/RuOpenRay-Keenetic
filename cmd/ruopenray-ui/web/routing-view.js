@@ -1067,7 +1067,9 @@ function firewallApplyPanel() {
     ? `iptables: ${status.iptablesPath || 'не найден'} · LAN: ${status.lanInterface || 'br0'}`
     : `ip rule: ${status.ipRule ? 'есть' : 'нет'} · route: ${status.ipRoute ? 'есть' : 'нет'} · hotplug: ${status.hotplug ? 'есть' : 'нет'}`;
   const moduleLabel = isKeenetic ? 'TPROXY' : 'Модули';
-  const moduleState = isKeenetic ? 'REDIRECT режим' : (status.tproxyModules?.ok === false ? 'не все установлены' : 'готово');
+  const moduleState = isKeenetic
+    ? status.tproxyModules?.ok ? 'TPROXY готов' : status.tproxyModules?.loadable ? 'TPROXY загрузится' : 'REDIRECT режим'
+    : (status.tproxyModules?.ok === false ? 'не все установлены' : 'готово');
   const previewTitle = isKeenetic ? 'Preview Keenetic hook' : 'Preview nftables';
   const previewDetail = isKeenetic ? 'Что будет сохранено в /opt/etc/ndm и применено через iptables.' : 'Что будет сохранено и применено на OpenWrt.';
   const matchesSelection = typeof firewallReadyStatus === 'function' ? firewallReadyStatus(status) : true;

@@ -80,6 +80,12 @@ http://192.168.1.1:9090/
 RUOPENRAY_BINARY_URL='https://example.com/ruopenray-ui-linux-arm64' sh -c "$(wget -O - https://raw.githubusercontent.com/AceAsket/RuOpenRay-Keenetic/main/scripts/install-keenetic.sh)"
 ```
 
+Конкретный релиз панели:
+
+```sh
+RUOPENRAY_VERSION='v0.1.0-keenetic.8' sh -c "$(wget -O - https://raw.githubusercontent.com/AceAsket/RuOpenRay-Keenetic/main/scripts/install-keenetic.sh)"
+```
+
 ## Xray-core
 
 Xray-core устанавливается из веб-панели. Выберите релиз GitHub, после чего backend скачает подходящий `linux/arm64` архив и положит бинарник в `/opt/sbin/xray`.
@@ -102,30 +108,45 @@ ruopenray.<ваш-домен>.keenetic.pro -> 192.168.1.1:9090
 
 ## Прозрачный режим
 
-TCP REDIRECT для LAN:
+Поддерживаемые режимы:
+
+```text
+REDIRECT: TCP через nat REDIRECT
+TPROXY: TCP/UDP через mangle TPROXY и route table 111
+```
+
+Файлы hook:
 
 ```text
 /opt/etc/ndm/netfilter.d/90-ruopenray-redirect.sh
 /opt/etc/ruopenray-ui/disable-keenetic-redirect.sh
 ```
 
-Установка hook:
+Зависимости:
 
 ```sh
 opkg install iptables
-mkdir -p /opt/etc/ndm/netfilter.d /opt/etc/ruopenray-ui
-curl -fsSL https://raw.githubusercontent.com/AceAsket/RuOpenRay-Keenetic/main/scripts/keenetic-redirect.sh -o /opt/etc/ndm/netfilter.d/90-ruopenray-redirect.sh
-curl -fsSL https://raw.githubusercontent.com/AceAsket/RuOpenRay-Keenetic/main/scripts/keenetic-disable-redirect.sh -o /opt/etc/ruopenray-ui/disable-keenetic-redirect.sh
-chmod 0755 /opt/etc/ndm/netfilter.d/90-ruopenray-redirect.sh /opt/etc/ruopenray-ui/disable-keenetic-redirect.sh
-/opt/etc/ndm/netfilter.d/90-ruopenray-redirect.sh
 ```
 
-REDIRECT направляет TCP `80/443` с LAN-интерфейса `br0` в Xray inbound `transparent_ipv4` на порт `52345`. UDP `443` отклоняется для отключения QUIC.
+Для TPROXY нужны модули KeeneticOS:
 
-Отключение QUIC-блока:
+```text
+/lib/modules/$(uname -r)/xt_socket.ko
+/lib/modules/$(uname -r)/xt_TPROXY.ko
+```
+
+Панель сама записывает hook, подгружает модули TPROXY и применяет правила. По умолчанию используется LAN-интерфейс `br0` и Xray inbound `transparent_ipv4` на порту `52345`.
+
+Ручной запуск REDIRECT:
 
 ```sh
-RUOPENRAY_BLOCK_QUIC=0 /opt/etc/ndm/netfilter.d/90-ruopenray-redirect.sh
+RUOPENRAY_ROUTER_MODE=redirect RUOPENRAY_PORTS='80 443' /opt/etc/ndm/netfilter.d/90-ruopenray-redirect.sh
+```
+
+Ручной запуск TPROXY:
+
+```sh
+RUOPENRAY_ROUTER_MODE=tproxy RUOPENRAY_PORTS='80 443' RUOPENRAY_BLOCK_QUIC=0 /opt/etc/ndm/netfilter.d/90-ruopenray-redirect.sh
 ```
 
 Откат:

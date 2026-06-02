@@ -20,7 +20,12 @@ TMP_DIR="${RUOPENRAY_TMP_DIR:-/opt/tmp}"
 HOST="${RUOPENRAY_HOST:-0.0.0.0}"
 PORT="${RUOPENRAY_PORT:-9090}"
 PASSWORD="${RUOPENRAY_PASSWORD:-}"
-RELEASE_BASE_URL="${RUOPENRAY_RELEASE_BASE_URL:-https://github.com/AceAsket/RuOpenRay-Keenetic/releases/latest/download}"
+VERSION="${RUOPENRAY_VERSION:-}"
+if [ -n "$VERSION" ] && [ -z "${RUOPENRAY_RELEASE_BASE_URL:-}" ]; then
+	RELEASE_BASE_URL="https://github.com/AceAsket/RuOpenRay-Keenetic/releases/download/$VERSION"
+else
+	RELEASE_BASE_URL="${RUOPENRAY_RELEASE_BASE_URL:-https://github.com/AceAsket/RuOpenRay-Keenetic/releases/latest/download}"
+fi
 KEEP_BINARY_BACKUPS="${RUOPENRAY_KEEP_BINARY_BACKUPS:-2}"
 ENV_FILE="$DATA_DIR/ruopenray-ui.env"
 
