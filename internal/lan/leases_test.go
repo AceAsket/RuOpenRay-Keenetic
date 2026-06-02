@@ -39,6 +39,28 @@ func TestDHCPLeaseReportUsesDataDirFallback(t *testing.T) {
 	}
 }
 
+func TestParseKeeneticDHCPBindings(t *testing.T) {
+	content := `
+            lease:
+                   ip: 192.168.1.94
+                  mac: 00:e0:4c:56:03:3d
+                  via: 00:e0:4c:56:03:3d
+             hostname: AceLegion
+                 name: AceLegion - Home network - 2026-06-02 10:58
+              expires: 17218
+`
+	leases := ParseKeeneticDHCPBindings(content, 1770000000)
+	if len(leases) != 1 {
+		t.Fatalf("ParseKeeneticDHCPBindings returned %d leases, want 1: %#v", len(leases), leases)
+	}
+	if leases[0]["name"] != "AceLegion" || leases[0]["ip"] != "192.168.1.94" || leases[0]["remaining"] != int64(17218) {
+		t.Fatalf("lease parsed incorrectly: %#v", leases[0])
+	}
+	if leases[0]["expires"] != "1770017218" {
+		t.Fatalf("expires = %v, want 1770017218", leases[0]["expires"])
+	}
+}
+
 func TestDHCPLeaseReportEmptyArray(t *testing.T) {
 	report := DHCPLeaseReport(t.TempDir())
 	leases, ok := report["leases"].([]map[string]any)
