@@ -8,8 +8,6 @@ import (
 	"regexp"
 	"sort"
 	"strings"
-
-	rsystem "github.com/AceAsket/RuOpenRay-Keenetic/internal/system"
 )
 
 var extDatReferencePattern = regexp.MustCompile(`(?i)ext:\s*"?([^":\s]+\.dat):`)
@@ -33,7 +31,7 @@ func (s *serverState) storageReport() map[string]any {
 
 	return map[string]any{
 		"ok":        true,
-		"disk":      rsystem.SystemDiskInfo(),
+		"disk":      s.appDiskInfo(),
 		"usedDat":   sortedKeys(usedDat),
 		"unusedDat": unusedDat,
 		"paths": map[string]any{
@@ -89,7 +87,7 @@ func (s *serverState) cleanupStorage(payload map[string]any) map[string]any {
 	if target == "" {
 		target = "all"
 	}
-	diskBefore := rsystem.SystemDiskInfo()
+	diskBefore := s.appDiskInfo()
 	result := map[string]any{
 		"ok":           true,
 		"target":       target,
@@ -132,7 +130,7 @@ func (s *serverState) cleanupStorage(payload map[string]any) map[string]any {
 		result["ok"] = false
 		result["errors"] = []string{"неизвестная цель очистки"}
 	}
-	diskAfter := rsystem.SystemDiskInfo()
+	diskAfter := s.appDiskInfo()
 	beforeFree, beforeOK := diskFreeBytes(diskBefore)
 	afterFree, afterOK := diskFreeBytes(diskAfter)
 	result["diskBefore"] = diskBefore

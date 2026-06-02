@@ -260,5 +260,13 @@ func (s *serverState) systemSamplerInstance() *rsystem.Sampler {
 }
 
 func (s *serverState) systemMetrics() map[string]any {
-	return s.systemSamplerInstance().Metrics()
+	metrics := s.systemSamplerInstance().Metrics()
+	metrics["disk"] = s.appDiskInfo()
+	return metrics
+}
+
+func (s *serverState) appDiskInfo() map[string]any {
+	info := rsystem.DiskInfo(s.cfg.DataDir)
+	info["label"] = s.cfg.DataDir
+	return info
 }
