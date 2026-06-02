@@ -1475,7 +1475,7 @@ function loadingDashboard() {
       <div class="dash-status">
         <span class="eyebrow">Состояние роутера</span>
         <h2>Проверяем Xray</h2>
-        <p>Получаем статус сервиса, ядра и активной конфигурации с OpenWrt.</p>
+        <p>Получаем статус сервиса, ядра и активной конфигурации с Keenetic/Entware.</p>
         ${noticeView(state, escapeHtml, { className: 'dash-notice' })}
       </div>
       <div class="dash-actions">
@@ -1484,7 +1484,7 @@ function loadingDashboard() {
     </section>
 
     <section class="stats stats-dashboard">
-      ${stat('Сервис', 'Проверяем', 'Ждём ответ OpenWrt service manager')}
+      ${stat('Сервис', 'Проверяем', 'Ждём ответ Entware init.d')}
       ${stat('Ядро', 'Проверяем', 'Пока не показываем действия установки')}
     </section>
 
@@ -1681,7 +1681,7 @@ function setupStepGate(step) {
   const firewallReady = typeof firewallReadyStatus === 'function' ? firewallReadyStatus(state.firewallStatus || {}) : false;
   const notice = (level, title, detail) => ({ ok: false, notice: { step, level, title, detail } });
   if (step === 'environment') {
-    if (!byKey.get('core')?.ok) return notice('bad', 'Xray не найден', 'Сначала установите xray-core и зависимости OpenWrt. Откройте установку Xray на этом шаге.');
+    if (!byKey.get('core')?.ok) return notice('bad', 'Xray не найден', 'Сначала установите Xray для Keenetic/Entware. Откройте установку Xray на этом шаге.');
     if (!byKey.get('geo')?.ok) {
       return {
         ok: true,
@@ -1868,7 +1868,7 @@ function render() {
       <aside class="sidebar ${state.mobileNavOpen ? 'nav-open' : ''}">
         <div class="brand">
           <img class="brand-mark" src="/assets/ruopenray-icon-512.png" alt="" />
-          <div><strong>RuOpenRay UI</strong><span>Панель Xray для OpenWrt</span></div>
+          <div><strong>RuOpenRay UI</strong><span>Панель Xray для Keenetic</span></div>
         </div>
         <button class="mobile-menu-toggle" data-action="toggleMobileNav" type="button" aria-expanded="${state.mobileNavOpen ? 'true' : 'false'}">
           <span>${state.mobileNavOpen ? 'Закрыть меню' : 'Меню'}</span>

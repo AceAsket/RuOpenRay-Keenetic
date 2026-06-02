@@ -178,7 +178,7 @@ export function createUpdatesActions({
   async function installCorePackage() {
     state.coreUpdating = true;
     state.installStep = 'installing';
-    state.message = 'Устанавливаю Xray из пакетов OpenWrt...';
+    state.message = 'Устанавливаю Xray для Keenetic/Entware...';
     render();
     try {
       const result = await request('/api/core/update', { method: 'POST', body: JSON.stringify({ version: '' }) });

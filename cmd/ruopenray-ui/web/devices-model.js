@@ -38,7 +38,7 @@ export function createDevicesModel({
               <strong>${escapeHtml(name)}</strong>
               <span>${escapeHtml(detail)}</span>
             </button>`;
-          }).join('') : '<p class="muted">На OpenWrt обычно читается <code>/tmp/dhcp.leases</code>. Можно ввести IP вручную.</p>'}
+          }).join('') : '<p class="muted">Keenetic lease adapter пока не подключен. Можно ввести IP вручную.</p>'}
           <p class="muted lease-search-empty" data-lease-search-empty hidden>По этому запросу устройств нет.</p>
         </div>
       </div>

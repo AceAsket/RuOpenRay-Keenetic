@@ -46,7 +46,7 @@ function devicesPanel() {
           ${state.leases.map((lease) => `<button class="lease-card" data-lease-search-item data-lease-search-text="${escapeHtml(leaseSearchText(lease))}" data-lease-ip="${escapeHtml(lease.ip)}" data-lease-name="${escapeHtml(lease.name || lease.mac)}">
             <strong>${escapeHtml(lease.name || 'Без имени')}</strong>
             <span>${escapeHtml([lease.ip, lease.mac, lease.remaining ? `осталось ${formatDuration(lease.remaining)}` : ''].filter(Boolean).join(' · '))}</span>
-          </button>`).join('') || '<p class="muted">DHCP leases пока не найдены. На OpenWrt обычно читается /tmp/dhcp.leases.</p>'}
+          </button>`).join('') || '<p class="muted">DHCP leases пока не найдены. Keenetic lease adapter будет подключен отдельно.</p>'}
           <p class="muted lease-search-empty" data-lease-search-empty hidden>По этому запросу устройств нет.</p>
         </div>
         <div class="device-form">

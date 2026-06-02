@@ -70,7 +70,7 @@ export function createSetupModel({
           ? 'dnsmasq направлен на Xray DNS.'
           : lanDns.mode === 'upstream'
             ? `dnsmasq направлен на внешний DNS: ${(lanDns.servers || []).join(', ') || state.lanDnsUpstream || 'не задан'}`
-            : 'Можно оставить OpenWrt DNS как есть или направить dnsmasq на Xray.'
+            : 'Можно оставить KeeneticOS DNS как есть или направить DNS на Xray.'
       }
     ];
     const required = items.filter((item) => ['core', 'geo', 'servers', 'transparent', 'firewall'].includes(item.key));

@@ -376,7 +376,7 @@ function interceptAdvancedSections() {
         <div><h2>TCP Fast Open</h2><span>Может ускорять установку TCP-соединений, если поддерживается ядром, провайдером и сервером. На слабых роутерах лучше включать осознанно.</span></div>
       </div>
       <div class="settings-info-grid">
-        <article><span>Система OpenWrt</span><strong>${escapeHtml(tfo.available ? (tfo.enabled ? 'включено' : 'выключено') : 'недоступно')}</strong></article>
+        <article><span>Система роутера</span><strong>${escapeHtml(tfo.available ? (tfo.enabled ? 'включено' : 'выключено') : 'недоступно')}</strong></article>
         <article><span>Значение sysctl</span><strong>${escapeHtml(tfo.value ?? '—')}</strong></article>
         <article><span>Черновик Xray</span><strong>${escapeHtml(tfoDraft ? 'включен' : 'выключен')}</strong></article>
         <article><span>Файл sysctl</span><strong>${escapeHtml(tfo.persistentPath || '/etc/sysctl.d/90-ruopenray-tcp-fastopen.conf')}</strong></article>

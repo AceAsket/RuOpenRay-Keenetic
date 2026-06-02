@@ -441,7 +441,7 @@ function installWizardDialog() {
       <section class="modal install-wizard" role="dialog" aria-modal="true" aria-labelledby="installWizardTitle" data-modal>
         <div class="modal-head">
           <div>
-            <h2 id="installWizardTitle">Установка Xray на OpenWrt</h2>
+            <h2 id="installWizardTitle">Установка Xray на Keenetic</h2>
             <p>Проверяем окружение роутера: пакетный менеджер, архитектуру, свободное место, geo-файлы и init-сервис.</p>
           </div>
           <button class="icon-btn" type="button" data-action="closeInstallWizard" aria-label="Закрыть">×</button>
@@ -464,7 +464,7 @@ function installWizardDialog() {
         <section class="install-command-card">
           <div>
             <strong>Установка одной командой с GitHub</strong>
-            <span>Команда определит OpenWrt 24/25, пакетный менеджер, архитектуру, поставит зависимости TPROXY и скачает подходящий бинарник RuOpenRay.</span>
+            <span>Команда определит Entware-окружение, архитектуру и скачает подходящий бинарник RuOpenRay для Keenetic.</span>
           </div>
           <label>
             Пароль панели
@@ -494,7 +494,7 @@ function installWizardDialog() {
         </div>
         <div class="settings-warning">
           <strong>Порядок</strong>
-          <span>Сначала ставим xray-core через пакетный менеджер OpenWrt. Затем обновляем geo-файлы, чтобы правила geosite/geoip проходили проверку конфигурации.</span>
+          <span>Сначала ставим Xray в Entware, затем обновляем geo-файлы, чтобы правила geosite/geoip проходили проверку конфигурации.</span>
         </div>
         <div class="toolbar">
           <button class="btn secondary ${state.busyAction === 'refreshInstallPlan' ? 'is-busy' : ''}" type="button" data-action="refreshInstallPlan" ${installing || state.busyAction === 'refreshInstallPlan' ? 'disabled' : ''}>${state.busyAction === 'refreshInstallPlan' ? 'Проверяю...' : 'Проверить заново'}</button>
@@ -530,7 +530,7 @@ function coreUpdateDialog() {
         </div>
         <div class="core-update-banner ${info.hasUpdate ? 'has-update' : ''}">
           <strong>${missing ? 'Xray не установлен' : info.hasUpdate ? 'Есть обновление' : 'Актуальная стабильная версия уже установлена'}</strong>
-          <span>${missing ? 'Для OpenWrt проще начать с пакета xray-core из репозитория, а версии из GitHub оставить для ручного выбора.' : info.target ? `${info.target.prerelease ? 'Последний pre-release' : 'Последний stable'}: ${escapeHtml(info.target.tag)} · ${releaseDate(info.target)}` : 'Релизы пока не загружены'}</span>
+          <span>${missing ? 'Для Keenetic ставим Xray из GitHub-релиза в /opt/sbin/xray; пакетная установка через OpenWrt здесь не используется.' : info.target ? `${info.target.prerelease ? 'Последний pre-release' : 'Последний stable'}: ${escapeHtml(info.target.tag)} · ${releaseDate(info.target)}` : 'Релизы пока не загружены'}</span>
         </div>
         <div class="core-arch-strip">
           <strong>Архитектура</strong>
@@ -542,8 +542,8 @@ function coreUpdateDialog() {
         </div>
         ${missing ? `<div class="core-install-card">
           <div>
-            <strong>Пакет OpenWrt</strong>
-            <span>OpenWrt 25: <code>apk</code>, OpenWrt 24: <code>opkg</code>. Перед установкой backend сверит архитектуру системы и пакетного репозитория.</span>
+            <strong>GitHub-релиз Xray</strong>
+            <span>Keenetic использует Entware-путь <code>/opt/sbin/xray</code>. Backend сверит архитектуру и скачает подходящий архив Xray.</span>
           </div>
           <button class="btn" type="button" data-action="openInstallWizard" ${state.coreUpdating ? 'disabled' : ''}>${state.coreUpdating ? 'Устанавливаю...' : 'Открыть мастер'}</button>
         </div>` : ''}

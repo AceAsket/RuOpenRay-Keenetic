@@ -129,7 +129,7 @@ export function createSetupActions({
         pushStep(lanDnsOk, 'LAN DNS / dnsmasq', lanDns.mode ? lanDnsModeLabel(lanDns.mode) : (lanDns.error || ''));
         if (!lanDnsOk) throw new Error(lanDns.error || 'Не удалось настроить LAN DNS');
       } else {
-        pushStep(true, 'LAN DNS / dnsmasq', 'Оставлен текущий режим OpenWrt.');
+        pushStep(true, 'LAN DNS', 'Оставлен текущий режим KeeneticOS.');
       }
 
       const firewall = await applyFirewallWithRetry(3);

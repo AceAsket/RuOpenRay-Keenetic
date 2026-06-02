@@ -66,7 +66,7 @@ export function createConfigStateHelpers(state, { onDraftChange } = {}) {
     return ({
       xray: 'DNS через Xray',
       upstream: 'Внешний DNS / Pi-hole',
-      system: 'Как в OpenWrt',
+      system: 'Как в KeeneticOS',
       manual: 'Ручная настройка',
       unknown: 'Неизвестно'
     })[mode] || 'Неизвестно';

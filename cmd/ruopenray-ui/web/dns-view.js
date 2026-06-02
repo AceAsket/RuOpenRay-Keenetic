@@ -186,12 +186,12 @@ function dnsDiagnosticsSection() {
     <div class="dns-diagnostics-card">
       <div>
         <strong>DNS роутера</strong>
-        <span>${diagnostics ? escapeHtml(diagnostics.summary || 'Проверка выполнена') : 'Проверяет системный DNS OpenWrt, WAN DNS и Xray DNS inbound.'}</span>
+        <span>${diagnostics ? escapeHtml(diagnostics.summary || 'Проверка выполнена') : 'Проверяет системный DNS KeeneticOS, WAN DNS и Xray DNS inbound.'}</span>
       </div>
       <button class="btn secondary ${state.busyAction === 'checkDnsDiagnostics' ? 'is-busy' : ''}" data-action="checkDnsDiagnostics" ${state.busyAction === 'checkDnsDiagnostics' ? 'disabled' : ''}>${state.busyAction === 'checkDnsDiagnostics' ? 'Проверяю...' : 'Проверить DNS роутера'}</button>
       ${diagnostics ? `<div class="dns-diagnostics-grid">
         <article class="${diagnostics.system?.ok ? 'ok' : 'warn'}"><span>Системный DNS</span><strong>${escapeHtml(probeText(diagnostics.system))}</strong></article>
-        <article class="${autoProbes.some((item) => item.ok) ? 'ok' : 'warn'}"><span>WAN DNS OpenWrt</span><strong>${escapeHtml(autoProbes.length ? autoProbes.map((item) => `${item.server}: ${probeText(item)}`).join(' · ') : 'не найден')}</strong></article>
+        <article class="${autoProbes.some((item) => item.ok) ? 'ok' : 'warn'}"><span>WAN DNS KeeneticOS</span><strong>${escapeHtml(autoProbes.length ? autoProbes.map((item) => `${item.server}: ${probeText(item)}`).join(' · ') : 'не найден')}</strong></article>
         <article class="${diagnostics.xrayDns?.ok || diagnostics.xrayDns?.skipped ? 'ok' : 'warn'}"><span>Xray DNS</span><strong>${escapeHtml(probeText(diagnostics.xrayDns))}</strong></article>
       </div>` : ''}
       ${(diagnostics?.warnings || []).length ? `<div class="settings-warning"><strong>Что важно</strong><span>${escapeHtml(diagnostics.warnings.join(' '))}</span></div>` : ''}
@@ -496,7 +496,7 @@ function dnsAdvancedSection() {
       </div>
       <div class="settings-warning">
         <strong>dnsmasq</strong>
-        <span>После применения черновика выберите схему в блоке DNS для LAN: направить dnsmasq на Xray, внешний Pi-hole или вернуть стандартный OpenWrt resolver.</span>
+        <span>После применения черновика выберите схему в блоке DNS для LAN: направить DNS на Xray, внешний Pi-hole или вернуть стандартный KeeneticOS resolver.</span>
       </div>
     </section>
   `;
@@ -528,7 +528,7 @@ function lanDnsSection() {
     ? xrayTarget
     : draftMode === 'upstream'
       ? (state.lanDnsUpstream || 'адрес Pi-hole/DNS не задан')
-      : 'системные настройки OpenWrt';
+      : 'системные настройки KeeneticOS';
   const draftUpstream = String(state.lanDnsUpstream || '').trim();
   const currentMatchesDraft = status.mode === draftMode && (
     draftMode !== 'upstream' ||
@@ -579,7 +579,7 @@ function lanDnsSection() {
           <span>LAN → dnsmasq → Pi-hole или другой DNS. Укажите адрес ниже, порт 53 добавится автоматически.</span>
         </button>
         <button type="button" class="advanced-card ${state.lanDnsMode === 'system' ? 'active' : ''}" data-lan-dns-mode="system">
-          <strong>Как в OpenWrt</strong>
+          <strong>Как в KeeneticOS</strong>
           <span>Убрать переопределение server/noresolv и вернуть dnsmasq к системным настройкам WAN.</span>
         </button>
       </div>
@@ -587,7 +587,7 @@ function lanDnsSection() {
         <div class="form-row">
           <label>Порт DNS inbound Xray</label>
           <input id="dnsInboundPort" type="number" min="1024" max="65535" value="${escapeHtml(state.dnsInboundPort || xrayPort || '10535')}" placeholder="10535" />
-          <small>По умолчанию 10535. Порт 5353 на OpenWrt часто занят mDNS/umdns, из-за этого Xray не стартует.</small>
+          <small>По умолчанию 10535. Порт 5353 часто занят mDNS, из-за этого Xray может не стартовать.</small>
         </div>
         <div class="form-row">
           <label>Адрес внешнего DNS или Pi-hole</label>
