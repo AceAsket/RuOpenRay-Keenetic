@@ -502,7 +502,10 @@ export function createFirewallModel({ state, configInbounds, configOutbounds, ro
       directDomainCount: routeSets.directDomainCount + routeSets.directDynamicIpCount,
       proxyDomainCount: routeSets.proxyDomainCount + routeSets.proxyDynamicIpCount,
       transparentPort: Number(info.transparentPort || 52345),
-      lanInterface: isKeenetic ? (state.firewallStatus?.lanInterface || 'br0') : 'br-lan'
+      lanInterface: isKeenetic ? (state.firewallStatus?.lanInterface || 'br0') : 'br-lan',
+      keeneticIpExclude: splitRouteValues(state.keeneticIpExcludeText || ''),
+      keeneticPortProxy: splitRouteValues(state.keeneticPortProxyText || ''),
+      keeneticPortExclude: splitRouteValues(state.keeneticPortExcludeText || '')
     };
   }
 

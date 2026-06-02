@@ -44,6 +44,25 @@ export function createConfigStateHelpers(state, { onDraftChange } = {}) {
     state.serviceDownloadMirror = settings.downloadMirror || 'direct';
     state.serviceMirrorPrefix = settings.mirrorPrefix || '';
   }
+
+  function syncKeeneticSettings(report) {
+    if (!report?.ok) return;
+    const settings = report.settings || {};
+    state.keeneticSettings = report;
+    state.keeneticIpv6Mode = settings.ipv6Mode || 'observe';
+    state.keeneticEntwareProxy = Boolean(settings.entwareProxy);
+    state.keeneticFdMonitor = settings.fdMonitor !== false;
+    state.keeneticDscpMode = settings.dscpMode || 'off';
+    state.keeneticDscpProxy = String(settings.dscpProxy ?? 63);
+    state.keeneticDscpDirect = String(settings.dscpDirect ?? 62);
+    state.keeneticNativePolicyMode = settings.nativePolicyMode || 'manual';
+    state.keeneticIpExcludeText = settings.ipExcludeText || '';
+    state.keeneticPortProxyText = settings.portProxyText || '';
+    state.keeneticPortExcludeText = settings.portExcludeText || '';
+    state.keeneticDownloadRetries = String(settings.downloadRetries ?? 3);
+    state.keeneticOfflineInstall = Boolean(settings.offlineInstall);
+    state.keeneticAdguardCompatMode = settings.adguardCompatMode || 'observe';
+  }
   
   function syncLanDnsStatus(status) {
     if (!status) return;
@@ -76,6 +95,7 @@ export function createConfigStateHelpers(state, { onDraftChange } = {}) {
     syncConfig,
     syncLoggingSettings,
     syncServiceSettings,
+    syncKeeneticSettings,
     syncLanDnsStatus,
     lanDnsModeLabel
   };

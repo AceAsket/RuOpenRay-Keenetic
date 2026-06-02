@@ -155,7 +155,8 @@ func TestParseKeeneticExcludeDeviceScope(t *testing.T) {
 }
 
 func TestKeeneticFirewallMetaNormalizesScope(t *testing.T) {
-	meta := keeneticFirewallMeta(map[string]any{
+	state := &serverState{cfg: appConfig{DataDir: t.TempDir(), Platform: "keenetic"}}
+	meta := state.keeneticFirewallMeta(map[string]any{
 		"deviceMode": []any{},
 		"portMode":   "all",
 		"devices":    []any{"192.168.1.70"},

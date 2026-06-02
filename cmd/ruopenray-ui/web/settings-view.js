@@ -45,6 +45,7 @@ function settingsPanel() {
     ['security', 'Панель'],
     ['interface', 'Интерфейс'],
     ['service', 'Сервис'],
+    ['keenetic', 'Keenetic'],
     ['local-proxy', 'Локальные прокси'],
     ['storage', 'Память'],
     ['updates', 'Обновление']
@@ -342,6 +343,104 @@ function settingsPanel() {
       </div>
     </section>
   `;
+  const keeneticReport = state.keeneticSettings || {};
+  const keeneticRejected = keeneticReport.rejected || {};
+  const appliedFeatures = keeneticReport.appliedFeatures || {};
+  const listCount = (items) => Array.isArray(items) ? items.length : 0;
+  const rejectedCount = listCount(keeneticRejected.ipExclude) + listCount(keeneticRejected.portProxy) + listCount(keeneticRejected.portExclude);
+  const keeneticSection = `
+    <section class="panel settings-section">
+      <div class="panel-title">
+        <div><h2>Keenetic runtime</h2><span>Опции совместимости с XKeen-подходом. Все меняется из UI; внешние списки применяются при следующем preview/apply firewall.</span></div>
+      </div>
+      <div class="settings-info-grid">
+        <article><span>Внешние списки</span><strong>${appliedFeatures.externalLists ? 'в hook' : 'сохранены'}</strong><small>${escapeHtml(`${listCount(keeneticReport.ipExclude)} IP exclude · ${listCount(keeneticReport.portProxy)} proxy ports · ${listCount(keeneticReport.portExclude)} port exclude`)}</small></article>
+        <article><span>IPv6</span><strong>${escapeHtml(state.keeneticIpv6Mode === 'disable' ? 'выключать' : state.keeneticIpv6Mode === 'allow' ? 'разрешать' : 'наблюдать')}</strong><small>Следующий слой: ip6tables/ipset6.</small></article>
+        <article><span>DSCP</span><strong>${escapeHtml(state.keeneticDscpMode === 'tproxy' ? `proxy ${state.keeneticDscpProxy}` : 'выключен')}</strong><small>${appliedFeatures.dscp ? 'TPROXY hook выставит метку proxy.' : 'Сохранено без применения.'}</small></article>
+        <article><span>FD monitor</span><strong>${state.keeneticFdMonitor ? 'включен' : 'выключен'}</strong><small>Логи уже чистят deleted FD; отдельный watchdog следующим шагом.</small></article>
+      </div>
+      <div class="settings-maintenance">
+        <div class="settings-field">
+          <label>IPv6 режим</label>
+          <select id="keeneticIpv6Mode">
+            <option value="observe" ${state.keeneticIpv6Mode === 'observe' ? 'selected' : ''}>Только предупреждать</option>
+            <option value="disable" ${state.keeneticIpv6Mode === 'disable' ? 'selected' : ''}>Выключать/блокировать</option>
+            <option value="allow" ${state.keeneticIpv6Mode === 'allow' ? 'selected' : ''}>Не трогать IPv6</option>
+          </select>
+          <small>Пока сохраняется как политика. Применение через ip6tables/ipset6 добавим отдельным шагом.</small>
+        </div>
+        <div class="settings-field">
+          <label>Native policy KeeneticOS</label>
+          <select id="keeneticNativePolicyMode">
+            <option value="manual" ${state.keeneticNativePolicyMode !== 'observe' ? 'selected' : ''}>Ручной scope RuOpenRay</option>
+            <option value="observe" ${state.keeneticNativePolicyMode === 'observe' ? 'selected' : ''}>Показывать политики</option>
+          </select>
+          <small>Безопасное чтение политик вынесем в следующий слой, запись только после проверки ndmc на стенде.</small>
+        </div>
+        <label class="settings-check compact ${state.keeneticEntwareProxy ? 'active' : ''}">
+          <input id="keeneticEntwareProxy" type="checkbox" ${state.keeneticEntwareProxy ? 'checked' : ''} />
+          <span><strong>Проксировать Entware-загрузки</strong><em>Заготовка под opkg/wget/curl через локальный proxy.</em></span>
+        </label>
+        <label class="settings-check compact ${state.keeneticFdMonitor ? 'active' : ''}">
+          <input id="keeneticFdMonitor" type="checkbox" ${state.keeneticFdMonitor ? 'checked' : ''} />
+          <span><strong>FD watchdog</strong><em>Следить за deleted log file descriptors и лимитами Xray.</em></span>
+        </label>
+        <div class="settings-field">
+          <label>DSCP режим</label>
+          <select id="keeneticDscpMode">
+            <option value="off" ${state.keeneticDscpMode !== 'tproxy' ? 'selected' : ''}>Выключен</option>
+            <option value="tproxy" ${state.keeneticDscpMode === 'tproxy' ? 'selected' : ''}>TPROXY proxy mark</option>
+          </select>
+          <small>В текущем hook применяется только proxy DSCP для TPROXY.</small>
+        </div>
+        <div class="settings-field">
+          <label>DSCP proxy</label>
+          <input id="keeneticDscpProxy" type="number" min="0" max="63" value="${escapeHtml(state.keeneticDscpProxy)}" ${state.keeneticDscpMode === 'tproxy' ? '' : 'disabled'} />
+        </div>
+        <div class="settings-field">
+          <label>Повторы загрузок</label>
+          <input id="keeneticDownloadRetries" type="number" min="1" max="10" value="${escapeHtml(state.keeneticDownloadRetries)}" />
+          <small>Сохранено для загрузчиков Xray/geo/app; подключение retries следующим шагом.</small>
+        </div>
+        <label class="settings-check compact ${state.keeneticOfflineInstall ? 'active' : ''}">
+          <input id="keeneticOfflineInstall" type="checkbox" ${state.keeneticOfflineInstall ? 'checked' : ''} />
+          <span><strong>Offline install mode</strong><em>Не требовать GitHub, если бинарники уже положены локально.</em></span>
+        </label>
+      </div>
+    </section>
+
+    <section class="panel settings-section">
+      <div class="panel-title">
+        <div><h2>Внешние списки firewall</h2><span>Аналоги файлов XKeen: IP исключения, дополнительные proxy-порты и порты-исключения. Списки попадут в Keenetic hook при применении firewall.</span></div>
+      </div>
+      <div class="settings-form">
+        <div class="form-row">
+          <label>IP exclude</label>
+          <textarea id="keeneticIpExcludeText" rows="5" placeholder="192.168.1.10&#10;203.0.113.0/24">${escapeHtml(state.keeneticIpExcludeText)}</textarea>
+          <small>Назначения, которые hook вернет напрямую до REDIRECT/TPROXY.</small>
+        </div>
+        <div class="form-row">
+          <label>Port proxying</label>
+          <textarea id="keeneticPortProxyText" rows="4" placeholder="5228&#10;8000:8100">${escapeHtml(state.keeneticPortProxyText)}</textarea>
+          <small>Дополнительные порты к выбранному списку firewall, если режим портов не “Все”.</small>
+        </div>
+        <div class="form-row">
+          <label>Port exclude</label>
+          <textarea id="keeneticPortExcludeText" rows="4" placeholder="22&#10;53">${escapeHtml(state.keeneticPortExcludeText)}</textarea>
+          <small>Порты, которые цепочка hook вернет напрямую даже при перехвате всех портов.</small>
+        </div>
+      </div>
+      ${rejectedCount ? `<div class="settings-warning"><strong>Часть строк пропущена</strong><span>${escapeHtml([
+        listCount(keeneticRejected.ipExclude) ? `IP: ${keeneticRejected.ipExclude.join(', ')}` : '',
+        listCount(keeneticRejected.portProxy) ? `proxy ports: ${keeneticRejected.portProxy.join(', ')}` : '',
+        listCount(keeneticRejected.portExclude) ? `exclude ports: ${keeneticRejected.portExclude.join(', ')}` : ''
+      ].filter(Boolean).join(' · '))}</span></div>` : ''}
+      <div class="toolbar">
+        <button class="btn warning ${state.keeneticSettingsSaving ? 'is-busy' : ''}" data-action="saveKeeneticSettings" ${state.keeneticSettingsSaving ? 'disabled' : ''}>${state.keeneticSettingsSaving ? 'Сохраняю...' : 'Сохранить Keenetic'}</button>
+        <button class="btn secondary" data-tab-jump="routing" data-routing-view-jump="intercept">Открыть firewall</button>
+      </div>
+    </section>
+  `;
   const storageSection = `
     <section class="panel settings-section">
       <div class="panel-title">
@@ -401,6 +500,8 @@ function settingsPanel() {
       ? storageSection
     : settingsView === 'service'
       ? serviceSection
+    : settingsView === 'keenetic'
+      ? keeneticSection
     : settingsView === 'local-proxy'
       ? localProxySection
       : loggingSections;

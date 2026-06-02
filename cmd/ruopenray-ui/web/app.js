@@ -168,6 +168,7 @@ const {
   syncConfig,
   syncLoggingSettings,
   syncServiceSettings,
+  syncKeeneticSettings,
   syncLanDnsStatus,
   lanDnsModeLabel
 } = createConfigStateHelpers(state, { onDraftChange: scheduleServerDraftSave });
@@ -635,6 +636,7 @@ const runtimeController = createRuntimeController({
   syncLanDnsStatus,
   syncLoggingSettings,
   syncServiceSettings,
+  syncKeeneticSettings,
   clearAuth
 });
 const {
@@ -717,7 +719,8 @@ const settingsActions = createSettingsActions({
   configureLogTimer,
   configureStatusTimer,
   syncLoggingSettings,
-  syncServiceSettings
+  syncServiceSettings,
+  syncKeeneticSettings
 });
 const {
   login,
@@ -727,6 +730,7 @@ const {
   clearLoggingFiles,
   refreshDhcpLeases,
   saveServiceSettings,
+  saveKeeneticSettings,
   refreshStorageReport,
   cleanupStorageBackups,
   cleanupPackageCache,
@@ -1982,6 +1986,7 @@ function busyButtonLabel(action, fallback = '') {
     checkGeoAudit: 'Проверяю geo',
     saveLoggingSettings: 'Сохраняю',
     saveServiceSettings: 'Сохраняю',
+    saveKeeneticSettings: 'Сохраняю',
     previewLanDnsUpstream: 'Проверяю',
     applyLanDnsUpstream: 'Применяю DNS'
   };
@@ -2062,6 +2067,7 @@ function bind() {
       clearLoggingFiles,
       refreshDhcpLeases,
       saveServiceSettings,
+      saveKeeneticSettings,
       appVersionClick,
       checkAppUpdate,
       updateApp,

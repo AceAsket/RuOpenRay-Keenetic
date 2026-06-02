@@ -32,6 +32,9 @@ BLOCK_QUIC="${RUOPENRAY_BLOCK_QUIC:-1}"
 TPROXY_MARK="${RUOPENRAY_TPROXY_MARK:-0x111}"
 TPROXY_TABLE="${RUOPENRAY_TPROXY_TABLE:-111}"
 PORTS="${RUOPENRAY_PORTS:-80 443}"
+PORT_EXCLUDE="${RUOPENRAY_PORT_EXCLUDE:-}"
+IP_EXCLUDE="${RUOPENRAY_IP_EXCLUDE:-}"
+DSCP_PROXY="${RUOPENRAY_DSCP_PROXY:-}"
 DEVICE_MODE="${RUOPENRAY_DEVICE_MODE:-all}"
 DEVICES="${RUOPENRAY_DEVICES:-}"
 
@@ -92,6 +95,25 @@ add_private_returns() {
   "$IPT" -t "$table" -A "$chain" -d 224.0.0.0/4 -j RETURN
 }
 
+add_external_ip_returns() {
+  table="$1"
+  chain="$2"
+  for target in $IP_EXCLUDE; do
+    [ -n "$target" ] || continue
+    "$IPT" -t "$table" -A "$chain" -d "$target" -j RETURN
+  done
+}
+
+add_port_exclude_returns() {
+  table="$1"
+  chain="$2"
+  for item in $PORT_EXCLUDE; do
+    [ -n "$item" ] || continue
+    "$IPT" -t "$table" -A "$chain" -p tcp --dport "$item" -j RETURN
+    "$IPT" -t "$table" -A "$chain" -p udp --dport "$item" -j RETURN 2>/dev/null || true
+  done
+}
+
 add_device_returns() {
   table="$1"
   chain="$2"
@@ -144,11 +166,17 @@ if [ "$MODE" = "tproxy" ]; then
   ip rule add fwmark "$TPROXY_MARK" lookup "$TPROXY_TABLE" 2>/dev/null || true
   "$IPT" -t mangle -N "$TPROXY_CHAIN"
   add_private_returns mangle "$TPROXY_CHAIN"
+  add_external_ip_returns mangle "$TPROXY_CHAIN"
+  add_port_exclude_returns mangle "$TPROXY_CHAIN"
   add_device_returns mangle "$TPROXY_CHAIN"
   "$IPT" -t mangle -A "$TPROXY_CHAIN" -p tcp -m socket --transparent -j MARK --set-mark "$TPROXY_MARK"
   "$IPT" -t mangle -A "$TPROXY_CHAIN" -p udp -m socket --transparent -j MARK --set-mark "$TPROXY_MARK"
   "$IPT" -t mangle -A "$TPROXY_CHAIN" -p tcp -m mark ! --mark 0 -j CONNMARK --save-mark
   "$IPT" -t mangle -A "$TPROXY_CHAIN" -p udp -m mark ! --mark 0 -j CONNMARK --save-mark
+  if [ -n "$DSCP_PROXY" ]; then
+    "$IPT" -t mangle -A "$TPROXY_CHAIN" -p tcp -j DSCP --set-dscp "$DSCP_PROXY" 2>/dev/null || true
+    "$IPT" -t mangle -A "$TPROXY_CHAIN" -p udp -j DSCP --set-dscp "$DSCP_PROXY" 2>/dev/null || true
+  fi
   "$IPT" -t mangle -A "$TPROXY_CHAIN" -p tcp -j TPROXY --on-ip 127.0.0.1 --on-port "$PORT" --tproxy-mark "$TPROXY_MARK"
   "$IPT" -t mangle -A "$TPROXY_CHAIN" -p udp -j TPROXY --on-ip 127.0.0.1 --on-port "$PORT" --tproxy-mark "$TPROXY_MARK"
   if [ "$PORTS" = "all" ]; then
@@ -163,6 +191,8 @@ if [ "$MODE" = "tproxy" ]; then
 else
   "$IPT" -t nat -N "$CHAIN"
   add_private_returns nat "$CHAIN"
+  add_external_ip_returns nat "$CHAIN"
+  add_port_exclude_returns nat "$CHAIN"
   add_device_returns nat "$CHAIN"
   "$IPT" -t nat -A "$CHAIN" -p tcp -j REDIRECT --to-ports "$PORT"
   if [ "$PORTS" = "all" ]; then
@@ -437,7 +467,7 @@ func parseKeeneticDeviceScope(prerouting string, chain string) (string, []string
 	return "all", []string{}
 }
 
-func keeneticFirewallPorts(payload map[string]any) []string {
+func (s *serverState) keeneticFirewallPorts(payload map[string]any) []string {
 	if fmt.Sprint(payload["portMode"]) == "all" {
 		return []string{"all"}
 	}
@@ -445,7 +475,24 @@ func keeneticFirewallPorts(payload map[string]any) []string {
 	if len(ports) == 0 {
 		ports = []string{"80", "443"}
 	}
-	return ports
+	for _, port := range s.keeneticExternalFirewallLists(payload)["portProxy"] {
+		ports = append(ports, port)
+	}
+	return unique(ports)
+}
+
+func unique(values []string) []string {
+	out := []string{}
+	seen := map[string]bool{}
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value == "" || seen[value] {
+			continue
+		}
+		seen[value] = true
+		out = append(out, value)
+	}
+	return out
 }
 
 func keeneticFirewallPortMode(payload map[string]any, ports []string) string {
@@ -470,7 +517,7 @@ func keeneticPortsEnvValue(ports []string) string {
 	return strings.Join(ports, " ")
 }
 
-func keeneticScriptEnv(routerMode string, lanInterface string, transparentPort int, ports []string, blockQuic bool, deviceMode string, devices []string) string {
+func keeneticScriptEnv(routerMode string, lanInterface string, transparentPort int, ports []string, blockQuic bool, deviceMode string, devices []string, ipExclude []string, portExclude []string, dscpProxy int) string {
 	block := "0"
 	if blockQuic {
 		block = "1"
@@ -482,29 +529,47 @@ func keeneticScriptEnv(routerMode string, lanInterface string, transparentPort i
 		" RUOPENRAY_LAN_IF=" + singleQuote(lanInterface) +
 		" RUOPENRAY_TRANSPARENT_PORT=" + singleQuote(strconv.Itoa(transparentPort)) +
 		" RUOPENRAY_PORTS=" + singleQuote(keeneticPortsEnvValue(ports)) +
+		" RUOPENRAY_IP_EXCLUDE=" + singleQuote(strings.Join(ipExclude, " ")) +
+		" RUOPENRAY_PORT_EXCLUDE=" + singleQuote(strings.Join(portExclude, " ")) +
+		" RUOPENRAY_DSCP_PROXY=" + singleQuote(func() string {
+		if dscpProxy <= 0 {
+			return ""
+		}
+		return strconv.Itoa(dscpProxy)
+	}()) +
 		" RUOPENRAY_DEVICE_MODE=" + singleQuote(deviceMode) +
 		" RUOPENRAY_DEVICES=" + singleQuote(strings.Join(devices, " ")) +
 		" RUOPENRAY_BLOCK_QUIC=" + singleQuote(block)
 }
 
-func keeneticFirewallMeta(payload map[string]any, routerMode string, lanInterface string, transparentPort int, ports []string, blockQuic bool) map[string]any {
+func (s *serverState) keeneticFirewallMeta(payload map[string]any, routerMode string, lanInterface string, transparentPort int, ports []string, blockQuic bool) map[string]any {
 	devices := stringList(payload["devices"])
 	deviceMode := keeneticFirewallDeviceMode(payload, devices)
 	portMode := keeneticFirewallPortMode(payload, ports)
+	externalLists := s.keeneticExternalFirewallLists(payload)
+	settings := s.normalizeKeeneticSettings(map[string]any{})
+	dscpProxy := 0
+	if fmt.Sprint(settings["dscpMode"]) == "tproxy" && routerMode == "tproxy" {
+		dscpProxy = number(settings["dscpProxy"], 63)
+	}
 	if portMode == "all" {
 		ports = []string{}
 	}
 	return map[string]any{
-		"routerMode":      routerMode,
-		"bypassMode":      "off",
-		"deviceMode":      deviceMode,
-		"devices":         devices,
-		"portMode":        portMode,
-		"ports":           ports,
-		"transparentPort": transparentPort,
-		"lanInterface":    lanInterface,
-		"blockQuic":       blockQuic,
-		"dnsIntercept":    false,
+		"routerMode":          routerMode,
+		"bypassMode":          "off",
+		"deviceMode":          deviceMode,
+		"devices":             devices,
+		"portMode":            portMode,
+		"ports":               ports,
+		"transparentPort":     transparentPort,
+		"lanInterface":        lanInterface,
+		"blockQuic":           blockQuic,
+		"dnsIntercept":        false,
+		"keeneticIpExclude":   externalLists["ipExclude"],
+		"keeneticPortProxy":   externalLists["portProxy"],
+		"keeneticPortExclude": externalLists["portExclude"],
+		"dscpProxy":           dscpProxy,
 	}
 }
 
@@ -637,30 +702,54 @@ func (s *serverState) keeneticFirewallStatus() map[string]any {
 		deviceMode = value
 		devices = stringList(meta["devices"])
 	}
+	keeneticSettings := s.keeneticSettings()
+	ipExclude := []string{}
+	portProxy := []string{}
+	portExclude := []string{}
+	if values := stringList(meta["keeneticIpExclude"]); len(values) > 0 {
+		ipExclude = values
+	} else if values, ok := keeneticSettings["ipExclude"].([]string); ok {
+		ipExclude = values
+	}
+	if values := stringList(meta["keeneticPortProxy"]); len(values) > 0 {
+		portProxy = values
+	} else if values, ok := keeneticSettings["portProxy"].([]string); ok {
+		portProxy = values
+	}
+	if values := stringList(meta["keeneticPortExclude"]); len(values) > 0 {
+		portExclude = values
+	} else if values, ok := keeneticSettings["portExclude"].([]string); ok {
+		portExclude = values
+	}
 	status := map[string]any{
-		"ok":              true,
-		"available":       available,
-		"platform":        s.cfg.Platform,
-		"routerMode":      routerMode,
-		"bypassMode":      "off",
-		"deviceMode":      deviceMode,
-		"devices":         devices,
-		"portMode":        portMode,
-		"ports":           ports,
-		"transparentPort": transparentPort,
-		"lanInterface":    lanInterface,
-		"dnsIntercept":    false,
-		"blockQuic":       blockQuic,
-		"persistent":      persistent,
-		"active":          active,
-		"hotplug":         persistent,
-		"hookPath":        keeneticRedirectHookPath,
-		"disablePath":     keeneticRedirectDisablePath,
-		"metaPath":        keeneticFirewallMetaPath,
-		"disableScript":   disableScript,
-		"iptablesPath":    iptables,
-		"ipRule":          routerMode != "tproxy" || ipRuleActive,
-		"ipRoute":         routerMode != "tproxy" || ipRouteActive,
+		"ok":                  true,
+		"available":           available,
+		"platform":            s.cfg.Platform,
+		"routerMode":          routerMode,
+		"bypassMode":          "off",
+		"deviceMode":          deviceMode,
+		"devices":             devices,
+		"portMode":            portMode,
+		"ports":               ports,
+		"transparentPort":     transparentPort,
+		"lanInterface":        lanInterface,
+		"dnsIntercept":        false,
+		"keeneticIpExclude":   ipExclude,
+		"keeneticPortProxy":   portProxy,
+		"keeneticPortExclude": portExclude,
+		"dscpProxy":           number(meta["dscpProxy"], 0),
+		"keeneticSettings":    keeneticSettings,
+		"blockQuic":           blockQuic,
+		"persistent":          persistent,
+		"active":              active,
+		"hotplug":             persistent,
+		"hookPath":            keeneticRedirectHookPath,
+		"disablePath":         keeneticRedirectDisablePath,
+		"metaPath":            keeneticFirewallMetaPath,
+		"disableScript":       disableScript,
+		"iptablesPath":        iptables,
+		"ipRule":              routerMode != "tproxy" || ipRuleActive,
+		"ipRoute":             routerMode != "tproxy" || ipRouteActive,
 		"iptables": map[string]any{
 			"natChain":         natChain,
 			"natPrerouting":    natPrerouting,
@@ -699,10 +788,13 @@ func (s *serverState) previewKeeneticFirewall(payload map[string]any) map[string
 		lanInterface = "br0"
 	}
 	blockQuic := boolPayload(payload, "blockQuic", true)
-	ports := keeneticFirewallPorts(payload)
-	meta := keeneticFirewallMeta(payload, routerMode, lanInterface, transparentPort, ports, blockQuic)
+	ports := s.keeneticFirewallPorts(payload)
+	meta := s.keeneticFirewallMeta(payload, routerMode, lanInterface, transparentPort, ports, blockQuic)
 	devices := stringList(meta["devices"])
-	env := keeneticScriptEnv(routerMode, lanInterface, transparentPort, ports, blockQuic, fmt.Sprint(meta["deviceMode"]), devices)
+	ipExclude := stringList(meta["keeneticIpExclude"])
+	portExclude := stringList(meta["keeneticPortExclude"])
+	dscpProxy := number(meta["dscpProxy"], 0)
+	env := keeneticScriptEnv(routerMode, lanInterface, transparentPort, ports, blockQuic, fmt.Sprint(meta["deviceMode"]), devices, ipExclude, portExclude, dscpProxy)
 	preview := strings.Join([]string{
 		"opkg install iptables",
 		"mkdir -p /opt/etc/ndm/netfilter.d /opt/etc/ruopenray-ui",
@@ -746,8 +838,8 @@ func (s *serverState) applyKeeneticFirewall(payload map[string]any) map[string]a
 		lanInterface = "br0"
 	}
 	blockQuic := boolPayload(payload, "blockQuic", true)
-	ports := keeneticFirewallPorts(payload)
-	meta := keeneticFirewallMeta(payload, routerMode, lanInterface, transparentPort, ports, blockQuic)
+	ports := s.keeneticFirewallPorts(payload)
+	meta := s.keeneticFirewallMeta(payload, routerMode, lanInterface, transparentPort, ports, blockQuic)
 	if err := writeExecutableFile(keeneticRedirectHookPath, keeneticRedirectHookScript); err != nil {
 		return map[string]any{"ok": false, "error": err.Error(), "status": s.firewallStatus()}
 	}
@@ -758,7 +850,10 @@ func (s *serverState) applyKeeneticFirewall(payload map[string]any) map[string]a
 		return map[string]any{"ok": false, "error": err.Error(), "status": s.firewallStatus()}
 	}
 	devices := stringList(meta["devices"])
-	step := runTimeout(15*time.Second, "sh", "-c", keeneticScriptEnv(routerMode, lanInterface, transparentPort, ports, blockQuic, fmt.Sprint(meta["deviceMode"]), devices)+" "+singleQuote(keeneticRedirectHookPath))
+	ipExclude := stringList(meta["keeneticIpExclude"])
+	portExclude := stringList(meta["keeneticPortExclude"])
+	dscpProxy := number(meta["dscpProxy"], 0)
+	step := runTimeout(15*time.Second, "sh", "-c", keeneticScriptEnv(routerMode, lanInterface, transparentPort, ports, blockQuic, fmt.Sprint(meta["deviceMode"]), devices, ipExclude, portExclude, dscpProxy)+" "+singleQuote(keeneticRedirectHookPath))
 	status := s.firewallStatus()
 	ok := step["ok"] == true && status["active"] == true && status["persistent"] == true && status["routerMode"] == routerMode
 	if routerMode == "tproxy" {

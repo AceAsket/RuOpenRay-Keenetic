@@ -101,4 +101,42 @@ export function bindSettingsControls({
   document.querySelector('#serviceMirrorPrefix')?.addEventListener('input', (event) => {
     state.serviceMirrorPrefix = event.target.value;
   });
+  document.querySelector('#keeneticIpv6Mode')?.addEventListener('change', (event) => {
+    state.keeneticIpv6Mode = event.target.value;
+    render();
+  });
+  document.querySelector('#keeneticNativePolicyMode')?.addEventListener('change', (event) => {
+    state.keeneticNativePolicyMode = event.target.value;
+  });
+  document.querySelector('#keeneticEntwareProxy')?.addEventListener('change', (event) => {
+    state.keeneticEntwareProxy = event.target.checked;
+    render();
+  });
+  document.querySelector('#keeneticFdMonitor')?.addEventListener('change', (event) => {
+    state.keeneticFdMonitor = event.target.checked;
+    render();
+  });
+  document.querySelector('#keeneticDscpMode')?.addEventListener('change', (event) => {
+    state.keeneticDscpMode = event.target.value;
+    render();
+  });
+  document.querySelector('#keeneticDscpProxy')?.addEventListener('input', (event) => {
+    state.keeneticDscpProxy = event.target.value;
+  });
+  document.querySelector('#keeneticDownloadRetries')?.addEventListener('input', (event) => {
+    state.keeneticDownloadRetries = event.target.value;
+  });
+  document.querySelector('#keeneticOfflineInstall')?.addEventListener('change', (event) => {
+    state.keeneticOfflineInstall = event.target.checked;
+    render();
+  });
+  document.querySelector('#keeneticIpExcludeText')?.addEventListener('input', (event) => {
+    state.keeneticIpExcludeText = event.target.value;
+  });
+  document.querySelector('#keeneticPortProxyText')?.addEventListener('input', (event) => {
+    state.keeneticPortProxyText = event.target.value;
+  });
+  document.querySelector('#keeneticPortExcludeText')?.addEventListener('input', (event) => {
+    state.keeneticPortExcludeText = event.target.value;
+  });
 }

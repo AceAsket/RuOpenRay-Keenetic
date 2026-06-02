@@ -9,7 +9,8 @@ export function createSettingsActions({
   configureLogTimer,
   configureStatusTimer,
   syncLoggingSettings,
-  syncServiceSettings
+  syncServiceSettings,
+  syncKeeneticSettings
 }) {
   function formatStorageBytes(value) {
     const bytes = Number(value || 0);
@@ -198,6 +199,37 @@ export function createSettingsActions({
     render();
   }
 
+  async function saveKeeneticSettings() {
+    state.keeneticSettingsSaving = true;
+    state.message = 'Сохраняю настройки Keenetic...';
+    render();
+    try {
+      const result = await request('/api/settings/keenetic', {
+        method: 'POST',
+        body: JSON.stringify({
+          ipv6Mode: state.keeneticIpv6Mode,
+          entwareProxy: state.keeneticEntwareProxy,
+          fdMonitor: state.keeneticFdMonitor,
+          dscpMode: state.keeneticDscpMode,
+          dscpProxy: Number(state.keeneticDscpProxy) || 63,
+          dscpDirect: Number(state.keeneticDscpDirect) || 62,
+          nativePolicyMode: state.keeneticNativePolicyMode,
+          ipExcludeText: state.keeneticIpExcludeText,
+          portProxyText: state.keeneticPortProxyText,
+          portExcludeText: state.keeneticPortExcludeText,
+          downloadRetries: Number(state.keeneticDownloadRetries) || 3,
+          offlineInstall: state.keeneticOfflineInstall,
+          adguardCompatMode: state.keeneticAdguardCompatMode
+        })
+      });
+      syncKeeneticSettings(result.settings);
+      state.message = result.stdout || 'Настройки Keenetic сохранены';
+    } finally {
+      state.keeneticSettingsSaving = false;
+    }
+    render();
+  }
+
   async function refreshStorageReport() {
     state.storageCleaning = 'refresh';
     try {
@@ -275,6 +307,7 @@ export function createSettingsActions({
     clearLoggingFiles,
     refreshDhcpLeases,
     saveServiceSettings,
+    saveKeeneticSettings,
     refreshStorageReport,
     cleanupStorageBackups,
     cleanupPackageCache,

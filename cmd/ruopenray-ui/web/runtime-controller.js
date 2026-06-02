@@ -15,6 +15,7 @@ export function createRuntimeController({
   syncLanDnsStatus,
   syncLoggingSettings,
   syncServiceSettings,
+  syncKeeneticSettings,
   clearAuth
 }) {
   function logsUrl() {
@@ -240,6 +241,7 @@ export function createRuntimeController({
         domainMonitor,
         logging,
         serviceSettings,
+        keeneticSettings,
         storageReport,
         tcpFastOpen,
         lanDns,
@@ -327,6 +329,7 @@ export function createRuntimeController({
       }
       syncLoggingSettings(logging);
       syncServiceSettings(serviceSettings);
+      syncKeeneticSettings(keeneticSettings);
       state.geoCustomSources = Array.isArray(geo?.customSources) ? geo.customSources : state.geoCustomSources;
       state.geoPresetOverrides = geo?.presetOverrides && typeof geo.presetOverrides === 'object' && !Array.isArray(geo.presetOverrides) ? geo.presetOverrides : state.geoPresetOverrides;
       state.geoUserLists = Array.isArray(geo?.userLists) ? geo.userLists : state.geoUserLists;

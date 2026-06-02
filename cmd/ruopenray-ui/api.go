@@ -161,6 +161,11 @@ func (s *serverState) handleAPI(w http.ResponseWriter, r *http.Request) {
 	case path == "/settings/service" && r.Method == http.MethodPost:
 		payload, _ := readJSON(w, r)
 		writeJSON(w, 200, s.saveServiceSettings(payload))
+	case path == "/settings/keenetic" && r.Method == http.MethodGet:
+		writeJSON(w, 200, s.keeneticSettings())
+	case path == "/settings/keenetic" && r.Method == http.MethodPost:
+		payload, _ := readJSON(w, r)
+		writeJSON(w, 200, s.saveKeeneticSettings(payload))
 	case path == "/storage/report" && r.Method == http.MethodGet:
 		writeJSON(w, 200, s.storageReport())
 	case path == "/storage/cleanup" && r.Method == http.MethodPost:

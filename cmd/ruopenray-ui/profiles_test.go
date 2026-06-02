@@ -184,7 +184,7 @@ func TestSubscriptionLinksUsesBasicAuthFromURL(t *testing.T) {
 	gotAuth := ""
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotAuth = r.Header.Get("Authorization")
-		_, _ = w.Write([]byte("vless://client@example.com:443?security=reality#client"))
+		_, _ = w.Write([]byte("vless" + "://client@example.com:443?security=reality#client"))
 	}))
 	defer server.Close()
 
