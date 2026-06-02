@@ -2,6 +2,7 @@ package main
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -42,5 +43,29 @@ func TestKeeneticFirewallPortsMergesSavedProxyList(t *testing.T) {
 	want := []string{"80", "443", "5228", "8443"}
 	if !reflect.DeepEqual(ports, want) {
 		t.Fatalf("ports = %#v, want %#v", ports, want)
+	}
+}
+
+func TestKeeneticFirewallMetaCarriesDnsAndIPv6(t *testing.T) {
+	state := &serverState{cfg: appConfig{DataDir: t.TempDir(), Platform: "keenetic"}}
+	state.saveKeeneticSettings(map[string]any{"ipv6Mode": "disable"})
+	meta := state.keeneticFirewallMeta(map[string]any{"dnsIntercept": true}, "tproxy", "br0", 52345, []string{"80", "443"}, true)
+	if meta["dnsIntercept"] != true {
+		t.Fatalf("dnsIntercept = %#v, want true", meta["dnsIntercept"])
+	}
+	if meta["ipv6Mode"] != "disable" {
+		t.Fatalf("ipv6Mode = %#v, want disable", meta["ipv6Mode"])
+	}
+}
+
+func TestKeeneticPreviewIncludesDnsAndIPv6Env(t *testing.T) {
+	state := &serverState{cfg: appConfig{DataDir: t.TempDir(), Platform: "keenetic"}}
+	state.saveKeeneticSettings(map[string]any{"ipv6Mode": "disable"})
+	preview := state.previewKeeneticFirewall(map[string]any{"routerMode": "redirect", "dnsIntercept": true})
+	body := strings.TrimSpace(preview["preview"].(string))
+	for _, want := range []string{"RUOPENRAY_DNS_INTERCEPT='1'", "RUOPENRAY_IPV6_MODE='disable'"} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("preview missing %q:\n%s", want, body)
+		}
 	}
 }

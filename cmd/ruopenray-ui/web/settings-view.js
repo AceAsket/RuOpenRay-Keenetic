@@ -355,7 +355,7 @@ function settingsPanel() {
       </div>
       <div class="settings-info-grid">
         <article><span>Внешние списки</span><strong>${appliedFeatures.externalLists ? 'в hook' : 'сохранены'}</strong><small>${escapeHtml(`${listCount(keeneticReport.ipExclude)} IP exclude · ${listCount(keeneticReport.portProxy)} proxy ports · ${listCount(keeneticReport.portExclude)} port exclude`)}</small></article>
-        <article><span>IPv6</span><strong>${escapeHtml(state.keeneticIpv6Mode === 'disable' ? 'выключать' : state.keeneticIpv6Mode === 'allow' ? 'разрешать' : 'наблюдать')}</strong><small>Следующий слой: ip6tables/ipset6.</small></article>
+        <article><span>IPv6</span><strong>${escapeHtml(state.keeneticIpv6Mode === 'disable' ? 'выключать' : state.keeneticIpv6Mode === 'allow' ? 'разрешать' : 'наблюдать')}</strong><small>${appliedFeatures.ipv6 ? 'Keenetic hook заблокирует IPv6 forwarding.' : 'Без изменений ip6tables.'}</small></article>
         <article><span>DSCP</span><strong>${escapeHtml(state.keeneticDscpMode === 'tproxy' ? `proxy ${state.keeneticDscpProxy}` : 'выключен')}</strong><small>${appliedFeatures.dscp ? 'TPROXY hook выставит метку proxy.' : 'Сохранено без применения.'}</small></article>
         <article><span>FD monitor</span><strong>${state.keeneticFdMonitor ? 'включен' : 'выключен'}</strong><small>Логи уже чистят deleted FD; отдельный watchdog следующим шагом.</small></article>
       </div>
@@ -367,7 +367,7 @@ function settingsPanel() {
             <option value="disable" ${state.keeneticIpv6Mode === 'disable' ? 'selected' : ''}>Выключать/блокировать</option>
             <option value="allow" ${state.keeneticIpv6Mode === 'allow' ? 'selected' : ''}>Не трогать IPv6</option>
           </select>
-          <small>Пока сохраняется как политика. Применение через ip6tables/ipset6 добавим отдельным шагом.</small>
+          <small>В режиме «выключать» Keenetic hook добавит ip6tables-блокировку IPv6 forwarding для LAN.</small>
         </div>
         <div class="settings-field">
           <label>Native policy KeeneticOS</label>

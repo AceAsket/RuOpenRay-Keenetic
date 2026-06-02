@@ -674,7 +674,7 @@ export function createFirewallModel({ state, configInbounds, configOutbounds, ro
     if ((Array.isArray(status.devices) || firewallSelectedDeviceIps().length) && !sameStringSet(status.devices || [], firewallSelectedDeviceIps())) return false;
     if (status.portMode && status.portMode !== (state.firewallPortMode || 'custom')) return false;
     if (status.portMode === 'custom' && !sameStringSet(status.ports || [], firewallPorts())) return false;
-    if (!isKeenetic && typeof status.dnsIntercept === 'boolean' && status.dnsIntercept !== Boolean(state.firewallDnsIntercept)) return false;
+    if (typeof status.dnsIntercept === 'boolean' && status.dnsIntercept !== Boolean(state.firewallDnsIntercept)) return false;
     if (typeof status.blockQuic === 'boolean' && status.blockQuic !== Boolean(state.firewallBlockQuic)) return false;
     const guard = firewallKillSwitchTargets();
     if (state.firewallKillSwitchEnabled && status.killSwitch !== true) return false;
@@ -739,7 +739,7 @@ export function createFirewallModel({ state, configInbounds, configOutbounds, ro
     } else if (expectedPortMode === 'custom' && !sameStringSet(status.ports || [], firewallPorts())) {
       reasons.push(`порты: ${stringListLabel(status.ports || [])} -> ${stringListLabel(firewallPorts())}`);
     }
-    if (!isKeenetic && typeof status.dnsIntercept === 'boolean' && status.dnsIntercept !== Boolean(state.firewallDnsIntercept)) {
+    if (typeof status.dnsIntercept === 'boolean' && status.dnsIntercept !== Boolean(state.firewallDnsIntercept)) {
       reasons.push(`DNS-перехват: ${onOffLabel(status.dnsIntercept)} -> ${onOffLabel(state.firewallDnsIntercept)}`);
     }
     if (typeof status.blockQuic === 'boolean' && status.blockQuic !== Boolean(state.firewallBlockQuic)) {

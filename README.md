@@ -122,6 +122,8 @@ ruopenray.<ваш-домен>.keenetic.pro -> 192.168.1.1:9090
 - порты-исключения
 - обновление DHCP leases из KeeneticOS
 - восстановление TPROXY policy routing
+- DNS intercept в Keenetic hook
+- IPv6 forwarding block в Keenetic hook
 
 Сохраненные списки применяются при preview/apply firewall и попадают в Keenetic hook.
 
@@ -165,6 +167,8 @@ RUOPENRAY_PORTS='all'       # все TCP для REDIRECT, TCP/UDP для TPROXY
 RUOPENRAY_DEVICE_MODE=all   # весь LAN
 RUOPENRAY_DEVICE_MODE=selected RUOPENRAY_DEVICES='192.168.1.50'
 RUOPENRAY_DEVICE_MODE=exclude  RUOPENRAY_DEVICES='192.168.1.60'
+RUOPENRAY_DNS_INTERCEPT=1   # отдельный перехват DNS/53
+RUOPENRAY_IPV6_MODE=disable # блокировка IPv6 forwarding через ip6tables
 ```
 
 Ручной запуск REDIRECT:
@@ -202,7 +206,6 @@ curl -4 --socks5-hostname 127.0.0.1:10808 https://api.ipify.org
 ## План
 
 - добавить UI для проверки TPROXY modules перед применением
-- включить управление IPv6 hook из настроек Keenetic
 - подключить Entware proxy и download retries к загрузчикам Xray, geo и обновлений
 - добавить watchdog deleted FD и лимитов Xray
 - расширить диагностику transparent proxy счетчиками hook, Xray и выборкой по клиентам

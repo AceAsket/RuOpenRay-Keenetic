@@ -22,13 +22,20 @@ const keeneticRedirectHookScript = `#!/bin/sh
 IPT="/opt/sbin/iptables"
 [ -x "$IPT" ] || IPT="/opt/bin/iptables"
 [ -x "$IPT" ] || IPT="iptables"
+IP6T="/opt/sbin/ip6tables"
+[ -x "$IP6T" ] || IP6T="/opt/bin/ip6tables"
+[ -x "$IP6T" ] || IP6T="ip6tables"
 LAN_IF="${RUOPENRAY_LAN_IF:-br0}"
 MODE="${RUOPENRAY_ROUTER_MODE:-redirect}"
 PORT="${RUOPENRAY_TRANSPARENT_PORT:-52345}"
 CHAIN="RUOPENRAY"
 TPROXY_CHAIN="RUOPENRAY_TPROXY"
 QUIC_CHAIN="RUOPENRAY_QUIC"
+DNS_CHAIN="RUOPENRAY_DNS_GUARD"
+IPV6_CHAIN="RUOPENRAY_IPV6"
 BLOCK_QUIC="${RUOPENRAY_BLOCK_QUIC:-1}"
+DNS_INTERCEPT="${RUOPENRAY_DNS_INTERCEPT:-0}"
+IPV6_MODE="${RUOPENRAY_IPV6_MODE:-observe}"
 TPROXY_MARK="${RUOPENRAY_TPROXY_MARK:-0x111}"
 TPROXY_TABLE="${RUOPENRAY_TPROXY_TABLE:-111}"
 PORTS="${RUOPENRAY_PORTS:-80 443}"
@@ -58,10 +65,23 @@ remove_jump_rules() {
   done
 }
 
+remove_ip6_jump_rules() {
+  "$IP6T" -t filter -S FORWARD 2>/dev/null | while IFS= read -r line; do
+    case "$line" in
+      *" -j $IPV6_CHAIN"*)
+        rule="${line#-A FORWARD }"
+        "$IP6T" -t filter -D FORWARD $rule 2>/dev/null || true
+      ;;
+    esac
+  done
+}
+
 cleanup() {
   remove_jump_rules nat PREROUTING "$CHAIN"
   remove_jump_rules mangle PREROUTING "$TPROXY_CHAIN"
   remove_jump_rules filter FORWARD "$QUIC_CHAIN"
+  remove_jump_rules filter FORWARD "$DNS_CHAIN"
+  remove_ip6_jump_rules
   while "$IPT" -t nat -D PREROUTING -i "$LAN_IF" -p tcp --dport 80 -j "$CHAIN" 2>/dev/null; do :; done
   while "$IPT" -t nat -D PREROUTING -i "$LAN_IF" -p tcp --dport 443 -j "$CHAIN" 2>/dev/null; do :; done
   while "$IPT" -t nat -D PREROUTING -i "$LAN_IF" -p tcp -j "$CHAIN" 2>/dev/null; do :; done
@@ -73,12 +93,17 @@ cleanup() {
     while "$IPT" -t mangle -D PREROUTING -i "$LAN_IF" -p udp --dport "$item" -j "$TPROXY_CHAIN" 2>/dev/null; do :; done
   done
   while "$IPT" -t filter -D FORWARD -i "$LAN_IF" -p udp --dport 443 -j "$QUIC_CHAIN" 2>/dev/null; do :; done
+  while "$IPT" -t filter -D FORWARD -i "$LAN_IF" -p udp --dport 53 -j "$DNS_CHAIN" 2>/dev/null; do :; done
   "$IPT" -t nat -F "$CHAIN" 2>/dev/null || true
   "$IPT" -t nat -X "$CHAIN" 2>/dev/null || true
   "$IPT" -t mangle -F "$TPROXY_CHAIN" 2>/dev/null || true
   "$IPT" -t mangle -X "$TPROXY_CHAIN" 2>/dev/null || true
   "$IPT" -t filter -F "$QUIC_CHAIN" 2>/dev/null || true
   "$IPT" -t filter -X "$QUIC_CHAIN" 2>/dev/null || true
+  "$IPT" -t filter -F "$DNS_CHAIN" 2>/dev/null || true
+  "$IPT" -t filter -X "$DNS_CHAIN" 2>/dev/null || true
+  "$IP6T" -t filter -F "$IPV6_CHAIN" 2>/dev/null || true
+  "$IP6T" -t filter -X "$IPV6_CHAIN" 2>/dev/null || true
   ip rule del fwmark "$TPROXY_MARK" lookup "$TPROXY_TABLE" 2>/dev/null || true
   ip route flush table "$TPROXY_TABLE" 2>/dev/null || true
 }
@@ -158,6 +183,37 @@ add_forward_quic_jump() {
   "$IPT" -t filter -I FORWARD 1 -i "$LAN_IF" -p udp --dport 443 -j "$QUIC_CHAIN"
 }
 
+add_forward_dns_guard_jump() {
+  if [ "$DEVICE_MODE" = "selected" ]; then
+    for source in $DEVICES; do
+      [ -n "$source" ] || continue
+      "$IPT" -t filter -I FORWARD 1 -i "$LAN_IF" -s "$source" -p udp --dport 53 -j "$DNS_CHAIN"
+    done
+    return 0
+  fi
+  "$IPT" -t filter -I FORWARD 1 -i "$LAN_IF" -p udp --dport 53 -j "$DNS_CHAIN"
+}
+
+add_forward_ipv6_jump() {
+  command -v "$IP6T" >/dev/null 2>&1 || return 0
+  "$IP6T" -t filter -I FORWARD 1 -i "$LAN_IF" -j "$IPV6_CHAIN" 2>/dev/null || true
+}
+
+port_list_covers_53() {
+  [ "$PORTS" = "all" ] && return 0
+  for item in $PORTS; do
+    case "$item" in
+      53) return 0 ;;
+      *:*)
+        start="${item%%:*}"
+        end="${item#*:}"
+        [ "$start" -le 53 ] 2>/dev/null && [ "$end" -ge 53 ] 2>/dev/null && return 0
+      ;;
+    esac
+  done
+  return 1
+}
+
 cleanup
 
 if [ "$MODE" = "tproxy" ]; then
@@ -187,6 +243,10 @@ if [ "$MODE" = "tproxy" ]; then
       add_prerouting_jump mangle udp "$item" "$TPROXY_CHAIN"
       add_prerouting_jump mangle tcp "$item" "$TPROXY_CHAIN"
     done
+    if [ "$DNS_INTERCEPT" = "1" ] && ! port_list_covers_53; then
+      add_prerouting_jump mangle udp 53 "$TPROXY_CHAIN"
+      add_prerouting_jump mangle tcp 53 "$TPROXY_CHAIN"
+    fi
   fi
 else
   "$IPT" -t nat -N "$CHAIN"
@@ -201,7 +261,18 @@ else
     for item in $PORTS; do
       add_prerouting_jump nat tcp "$item" "$CHAIN"
     done
+    if [ "$DNS_INTERCEPT" = "1" ] && ! port_list_covers_53; then
+      add_prerouting_jump nat tcp 53 "$CHAIN"
+    fi
   fi
+fi
+
+if [ "$DNS_INTERCEPT" = "1" ] && [ "$MODE" != "tproxy" ]; then
+  "$IPT" -t filter -N "$DNS_CHAIN"
+  add_private_returns filter "$DNS_CHAIN"
+  add_device_returns filter "$DNS_CHAIN"
+  "$IPT" -t filter -A "$DNS_CHAIN" -p udp -j REJECT
+  add_forward_dns_guard_jump
 fi
 
 if [ "$BLOCK_QUIC" = "1" ]; then
@@ -211,6 +282,15 @@ if [ "$BLOCK_QUIC" = "1" ]; then
   "$IPT" -t filter -A "$QUIC_CHAIN" -p udp -j REJECT
   add_forward_quic_jump
 fi
+
+if [ "$IPV6_MODE" = "disable" ]; then
+  if command -v "$IP6T" >/dev/null 2>&1; then
+    "$IP6T" -t filter -N "$IPV6_CHAIN" 2>/dev/null || true
+    "$IP6T" -t filter -F "$IPV6_CHAIN" 2>/dev/null || true
+    "$IP6T" -t filter -A "$IPV6_CHAIN" -j REJECT 2>/dev/null || true
+    add_forward_ipv6_jump
+  fi
+fi
 `
 
 const keeneticRedirectDisableScript = `#!/bin/sh
@@ -218,10 +298,15 @@ const keeneticRedirectDisableScript = `#!/bin/sh
 IPT="/opt/sbin/iptables"
 [ -x "$IPT" ] || IPT="/opt/bin/iptables"
 [ -x "$IPT" ] || IPT="iptables"
+IP6T="/opt/sbin/ip6tables"
+[ -x "$IP6T" ] || IP6T="/opt/bin/ip6tables"
+[ -x "$IP6T" ] || IP6T="ip6tables"
 LAN_IF="${RUOPENRAY_LAN_IF:-br0}"
 CHAIN="RUOPENRAY"
 TPROXY_CHAIN="RUOPENRAY_TPROXY"
 QUIC_CHAIN="RUOPENRAY_QUIC"
+DNS_CHAIN="RUOPENRAY_DNS_GUARD"
+IPV6_CHAIN="RUOPENRAY_IPV6"
 TPROXY_MARK="${RUOPENRAY_TPROXY_MARK:-0x111}"
 TPROXY_TABLE="${RUOPENRAY_TPROXY_TABLE:-111}"
 
@@ -242,11 +327,21 @@ remove_jump_rules() {
 remove_jump_rules nat PREROUTING "$CHAIN"
 remove_jump_rules mangle PREROUTING "$TPROXY_CHAIN"
 remove_jump_rules filter FORWARD "$QUIC_CHAIN"
+remove_jump_rules filter FORWARD "$DNS_CHAIN"
+"$IP6T" -t filter -S FORWARD 2>/dev/null | while IFS= read -r line; do
+  case "$line" in
+    *" -j $IPV6_CHAIN"*)
+      rule="${line#-A FORWARD }"
+      "$IP6T" -t filter -D FORWARD $rule 2>/dev/null || true
+    ;;
+  esac
+done
 while "$IPT" -t nat -D PREROUTING -i "$LAN_IF" -p tcp --dport 80 -j "$CHAIN" 2>/dev/null; do :; done
 while "$IPT" -t nat -D PREROUTING -i "$LAN_IF" -p tcp --dport 443 -j "$CHAIN" 2>/dev/null; do :; done
 while "$IPT" -t nat -D PREROUTING -i "$LAN_IF" -p tcp -j "$CHAIN" 2>/dev/null; do :; done
 while "$IPT" -t mangle -D PREROUTING -i "$LAN_IF" -p tcp -j "$TPROXY_CHAIN" 2>/dev/null; do :; done
 while "$IPT" -t mangle -D PREROUTING -i "$LAN_IF" -p udp -j "$TPROXY_CHAIN" 2>/dev/null; do :; done
+while "$IPT" -t filter -D FORWARD -i "$LAN_IF" -p udp --dport 53 -j "$DNS_CHAIN" 2>/dev/null; do :; done
 for item in 1 2 3 4 5 6 7 8 9 10; do
   while "$IPT" -t mangle -D PREROUTING -i "$LAN_IF" -p tcp -j "$TPROXY_CHAIN" 2>/dev/null; do :; done
   while "$IPT" -t mangle -D PREROUTING -i "$LAN_IF" -p udp -j "$TPROXY_CHAIN" 2>/dev/null; do :; done
@@ -258,6 +353,10 @@ while "$IPT" -t filter -D FORWARD -i "$LAN_IF" -p udp --dport 443 -j "$QUIC_CHAI
 "$IPT" -t mangle -X "$TPROXY_CHAIN" 2>/dev/null || true
 "$IPT" -t filter -F "$QUIC_CHAIN" 2>/dev/null || true
 "$IPT" -t filter -X "$QUIC_CHAIN" 2>/dev/null || true
+"$IPT" -t filter -F "$DNS_CHAIN" 2>/dev/null || true
+"$IPT" -t filter -X "$DNS_CHAIN" 2>/dev/null || true
+"$IP6T" -t filter -F "$IPV6_CHAIN" 2>/dev/null || true
+"$IP6T" -t filter -X "$IPV6_CHAIN" 2>/dev/null || true
 ip rule del fwmark "$TPROXY_MARK" lookup "$TPROXY_TABLE" 2>/dev/null || true
 ip route flush table "$TPROXY_TABLE" 2>/dev/null || true
 `
@@ -282,6 +381,10 @@ func keeneticExecutable(candidates ...string) string {
 
 func keeneticIptablesPath() string {
 	return keeneticExecutable("/opt/sbin/iptables", "/opt/bin/iptables", "iptables")
+}
+
+func keeneticIP6TablesPath() string {
+	return keeneticExecutable("/opt/sbin/ip6tables", "/opt/bin/ip6tables", "ip6tables")
 }
 
 func keeneticTPROXYTargetStatus() map[string]any {
@@ -517,18 +620,27 @@ func keeneticPortsEnvValue(ports []string) string {
 	return strings.Join(ports, " ")
 }
 
-func keeneticScriptEnv(routerMode string, lanInterface string, transparentPort int, ports []string, blockQuic bool, deviceMode string, devices []string, ipExclude []string, portExclude []string, dscpProxy int) string {
+func keeneticScriptEnv(routerMode string, lanInterface string, transparentPort int, ports []string, blockQuic bool, dnsIntercept bool, ipv6Mode string, deviceMode string, devices []string, ipExclude []string, portExclude []string, dscpProxy int) string {
 	block := "0"
 	if blockQuic {
 		block = "1"
 	}
+	dns := "0"
+	if dnsIntercept {
+		dns = "1"
+	}
 	if routerMode != "tproxy" {
 		routerMode = "redirect"
+	}
+	if ipv6Mode != "disable" && ipv6Mode != "allow" {
+		ipv6Mode = "observe"
 	}
 	return "RUOPENRAY_ROUTER_MODE=" + singleQuote(routerMode) +
 		" RUOPENRAY_LAN_IF=" + singleQuote(lanInterface) +
 		" RUOPENRAY_TRANSPARENT_PORT=" + singleQuote(strconv.Itoa(transparentPort)) +
 		" RUOPENRAY_PORTS=" + singleQuote(keeneticPortsEnvValue(ports)) +
+		" RUOPENRAY_DNS_INTERCEPT=" + singleQuote(dns) +
+		" RUOPENRAY_IPV6_MODE=" + singleQuote(ipv6Mode) +
 		" RUOPENRAY_IP_EXCLUDE=" + singleQuote(strings.Join(ipExclude, " ")) +
 		" RUOPENRAY_PORT_EXCLUDE=" + singleQuote(strings.Join(portExclude, " ")) +
 		" RUOPENRAY_DSCP_PROXY=" + singleQuote(func() string {
@@ -552,6 +664,8 @@ func (s *serverState) keeneticFirewallMeta(payload map[string]any, routerMode st
 	if fmt.Sprint(settings["dscpMode"]) == "tproxy" && routerMode == "tproxy" {
 		dscpProxy = number(settings["dscpProxy"], 63)
 	}
+	dnsIntercept := boolPayload(payload, "dnsIntercept", false)
+	ipv6Mode := cleanKeeneticMode(settings["ipv6Mode"], "observe", "observe", "disable", "allow")
 	if portMode == "all" {
 		ports = []string{}
 	}
@@ -565,7 +679,8 @@ func (s *serverState) keeneticFirewallMeta(payload map[string]any, routerMode st
 		"transparentPort":     transparentPort,
 		"lanInterface":        lanInterface,
 		"blockQuic":           blockQuic,
-		"dnsIntercept":        false,
+		"dnsIntercept":        dnsIntercept,
+		"ipv6Mode":            ipv6Mode,
 		"keeneticIpExclude":   externalLists["ipExclude"],
 		"keeneticPortProxy":   externalLists["portProxy"],
 		"keeneticPortExclude": externalLists["portExclude"],
@@ -606,13 +721,17 @@ func writeExecutableFile(path string, body string) error {
 
 func (s *serverState) keeneticFirewallStatus() map[string]any {
 	iptables := keeneticIptablesPath()
+	ip6tables := keeneticIP6TablesPath()
 	available := runtime.GOOS != "windows" && iptables != ""
 	natChain := map[string]any{"ok": false, "stderr": "iptables unavailable"}
 	natPrerouting := map[string]any{"ok": false, "stderr": "iptables unavailable"}
 	mangleChain := map[string]any{"ok": false, "stderr": "iptables unavailable"}
 	manglePrerouting := map[string]any{"ok": false, "stderr": "iptables unavailable"}
 	filterChain := map[string]any{"ok": false, "stderr": "iptables unavailable"}
+	dnsGuardChain := map[string]any{"ok": false, "stderr": "iptables unavailable"}
 	filterForward := map[string]any{"ok": false, "stderr": "iptables unavailable"}
+	ipv6Chain := map[string]any{"ok": false, "stderr": "ip6tables unavailable"}
+	ipv6Forward := map[string]any{"ok": false, "stderr": "ip6tables unavailable"}
 	ipRules := map[string]any{"ok": false, "stderr": "ip unavailable"}
 	ipRoutes := map[string]any{"ok": false, "stderr": "ip unavailable"}
 	if available {
@@ -621,16 +740,24 @@ func (s *serverState) keeneticFirewallStatus() map[string]any {
 		mangleChain = runTimeout(5*time.Second, iptables, "-t", "mangle", "-S", "RUOPENRAY_TPROXY")
 		manglePrerouting = runTimeout(5*time.Second, iptables, "-t", "mangle", "-S", "PREROUTING")
 		filterChain = runTimeout(5*time.Second, iptables, "-t", "filter", "-S", "RUOPENRAY_QUIC")
+		dnsGuardChain = runTimeout(5*time.Second, iptables, "-t", "filter", "-S", "RUOPENRAY_DNS_GUARD")
 		filterForward = runTimeout(5*time.Second, iptables, "-t", "filter", "-S", "FORWARD")
 		ipRules = runTimeout(5*time.Second, "ip", "rule", "show")
 		ipRoutes = runTimeout(5*time.Second, "ip", "route", "show", "table", "111")
+	}
+	if runtime.GOOS != "windows" && ip6tables != "" {
+		ipv6Chain = runTimeout(5*time.Second, ip6tables, "-t", "filter", "-S", "RUOPENRAY_IPV6")
+		ipv6Forward = runTimeout(5*time.Second, ip6tables, "-t", "filter", "-S", "FORWARD")
 	}
 	natChainText := fmt.Sprint(natChain["stdout"])
 	natPreroutingText := fmt.Sprint(natPrerouting["stdout"])
 	mangleChainText := fmt.Sprint(mangleChain["stdout"])
 	manglePreroutingText := fmt.Sprint(manglePrerouting["stdout"])
 	filterChainText := fmt.Sprint(filterChain["stdout"])
+	dnsGuardChainText := fmt.Sprint(dnsGuardChain["stdout"])
 	filterForwardText := fmt.Sprint(filterForward["stdout"])
+	ipv6ChainText := fmt.Sprint(ipv6Chain["stdout"])
+	ipv6ForwardText := fmt.Sprint(ipv6Forward["stdout"])
 	redirectActive := natChain["ok"] == true &&
 		strings.Contains(natChainText, "REDIRECT") &&
 		strings.Contains(natPreroutingText, "-j RUOPENRAY")
@@ -641,6 +768,12 @@ func (s *serverState) keeneticFirewallStatus() map[string]any {
 	blockQuic := filterChain["ok"] == true &&
 		strings.Contains(filterChainText, "REJECT") &&
 		strings.Contains(filterForwardText, "-j RUOPENRAY_QUIC")
+	dnsInterceptActive := strings.Contains(natPreroutingText, "--dport 53") && strings.Contains(natPreroutingText, "-j RUOPENRAY") ||
+		strings.Contains(manglePreroutingText, "--dport 53") && strings.Contains(manglePreroutingText, "-j RUOPENRAY_TPROXY") ||
+		dnsGuardChain["ok"] == true && strings.Contains(dnsGuardChainText, "REJECT") && strings.Contains(filterForwardText, "-j RUOPENRAY_DNS_GUARD")
+	ipv6DisabledActive := ipv6Chain["ok"] == true &&
+		(strings.Contains(ipv6ChainText, "REJECT") || strings.Contains(ipv6ChainText, "DROP")) &&
+		strings.Contains(ipv6ForwardText, "-j RUOPENRAY_IPV6")
 	persistent := false
 	if _, err := os.Stat(keeneticRedirectHookPath); err == nil {
 		persistent = true
@@ -702,6 +835,16 @@ func (s *serverState) keeneticFirewallStatus() map[string]any {
 		deviceMode = value
 		devices = stringList(meta["devices"])
 	}
+	dnsIntercept := dnsInterceptActive
+	if _, ok := meta["dnsIntercept"]; ok {
+		dnsIntercept = boolPayload(meta, "dnsIntercept", dnsInterceptActive)
+	}
+	ipv6Mode := "observe"
+	if value := strings.TrimSpace(fmt.Sprint(meta["ipv6Mode"])); value == "disable" || value == "allow" || value == "observe" {
+		ipv6Mode = value
+	} else if settings := s.normalizeKeeneticSettings(map[string]any{}); strings.TrimSpace(fmt.Sprint(settings["ipv6Mode"])) != "" {
+		ipv6Mode = cleanKeeneticMode(settings["ipv6Mode"], "observe", "observe", "disable", "allow")
+	}
 	keeneticSettings := s.keeneticSettings()
 	ipExclude := []string{}
 	portProxy := []string{}
@@ -733,7 +876,10 @@ func (s *serverState) keeneticFirewallStatus() map[string]any {
 		"ports":               ports,
 		"transparentPort":     transparentPort,
 		"lanInterface":        lanInterface,
-		"dnsIntercept":        false,
+		"dnsIntercept":        dnsIntercept,
+		"ipv6Mode":            ipv6Mode,
+		"ipv6Active":          ipv6DisabledActive,
+		"ipv6Available":       ip6tables != "",
 		"keeneticIpExclude":   ipExclude,
 		"keeneticPortProxy":   portProxy,
 		"keeneticPortExclude": portExclude,
@@ -756,7 +902,10 @@ func (s *serverState) keeneticFirewallStatus() map[string]any {
 			"mangleChain":      mangleChain,
 			"manglePrerouting": manglePrerouting,
 			"filterChain":      filterChain,
+			"dnsGuardChain":    dnsGuardChain,
 			"filterForward":    filterForward,
+			"ipv6Chain":        ipv6Chain,
+			"ipv6Forward":      ipv6Forward,
 		},
 		"ipRules":             ipRules,
 		"ipRoutes":            ipRoutes,
@@ -794,7 +943,7 @@ func (s *serverState) previewKeeneticFirewall(payload map[string]any) map[string
 	ipExclude := stringList(meta["keeneticIpExclude"])
 	portExclude := stringList(meta["keeneticPortExclude"])
 	dscpProxy := number(meta["dscpProxy"], 0)
-	env := keeneticScriptEnv(routerMode, lanInterface, transparentPort, ports, blockQuic, fmt.Sprint(meta["deviceMode"]), devices, ipExclude, portExclude, dscpProxy)
+	env := keeneticScriptEnv(routerMode, lanInterface, transparentPort, ports, blockQuic, boolPayload(meta, "dnsIntercept", false), fmt.Sprint(meta["ipv6Mode"]), fmt.Sprint(meta["deviceMode"]), devices, ipExclude, portExclude, dscpProxy)
 	preview := strings.Join([]string{
 		"opkg install iptables",
 		"mkdir -p /opt/etc/ndm/netfilter.d /opt/etc/ruopenray-ui",
@@ -853,7 +1002,7 @@ func (s *serverState) applyKeeneticFirewall(payload map[string]any) map[string]a
 	ipExclude := stringList(meta["keeneticIpExclude"])
 	portExclude := stringList(meta["keeneticPortExclude"])
 	dscpProxy := number(meta["dscpProxy"], 0)
-	step := runTimeout(15*time.Second, "sh", "-c", keeneticScriptEnv(routerMode, lanInterface, transparentPort, ports, blockQuic, fmt.Sprint(meta["deviceMode"]), devices, ipExclude, portExclude, dscpProxy)+" "+singleQuote(keeneticRedirectHookPath))
+	step := runTimeout(15*time.Second, "sh", "-c", keeneticScriptEnv(routerMode, lanInterface, transparentPort, ports, blockQuic, boolPayload(meta, "dnsIntercept", false), fmt.Sprint(meta["ipv6Mode"]), fmt.Sprint(meta["deviceMode"]), devices, ipExclude, portExclude, dscpProxy)+" "+singleQuote(keeneticRedirectHookPath))
 	status := s.firewallStatus()
 	ok := step["ok"] == true && status["active"] == true && status["persistent"] == true && status["routerMode"] == routerMode
 	if routerMode == "tproxy" {
