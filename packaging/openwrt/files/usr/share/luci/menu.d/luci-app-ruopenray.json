@@ -1,0 +1,14 @@
+{
+	"admin/services/ruopenray": {
+		"title": "RuOpenRay UI",
+		"order": 72,
+		"action": {
+			"type": "view",
+			"path": "ruopenray/dashboard"
+		},
+		"depends": {
+			"acl": [ "luci-app-ruopenray" ],
+			"fs": { "/usr/bin/ruopenray-ui": "executable" }
+		}
+	}
+}

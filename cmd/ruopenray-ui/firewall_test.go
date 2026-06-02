@@ -1,0 +1,204 @@
+﻿package main
+
+import (
+	"os"
+	"path/filepath"
+	"reflect"
+	"strings"
+	"testing"
+
+	rfw "github.com/AceAsket/RuOpenRay-Keenetic/internal/firewall"
+)
+
+func TestParseFirewallStatusMeta(t *testing.T) {
+	body := `# ruopenray-meta routerMode=tproxy bypassMode=off deviceMode=selected portMode=custom ports=80,443 blockQuic=true dnsIntercept=false transparentPort=52345 lanInterface=br-lan killSwitch=true
+table inet ruopenray {}
+`
+	meta := parseFirewallStatusMeta(body)
+	if meta["routerMode"] != "tproxy" {
+		t.Fatalf("routerMode = %#v, want tproxy", meta["routerMode"])
+	}
+	if meta["deviceMode"] != "selected" {
+		t.Fatalf("deviceMode = %#v, want selected", meta["deviceMode"])
+	}
+	if meta["dnsIntercept"] != false {
+		t.Fatalf("dnsIntercept = %#v, want false", meta["dnsIntercept"])
+	}
+	if meta["blockQuic"] != true {
+		t.Fatalf("blockQuic = %#v, want true", meta["blockQuic"])
+	}
+	if meta["transparentPort"] != 52345 {
+		t.Fatalf("transparentPort = %#v, want 52345", meta["transparentPort"])
+	}
+	ports, ok := meta["ports"].([]string)
+	if !ok || len(ports) != 2 || ports[0] != "80" || ports[1] != "443" {
+		t.Fatalf("ports = %#v, want [80 443]", meta["ports"])
+	}
+}
+
+func TestSanitizeKillSwitchDomains(t *testing.T) {
+	got := sanitizeKillSwitchDomains([]any{" OpenAI.com ", "*.chatgpt.com", "bad value", "10.0.0.1", "openai.com"})
+	want := []string{"openai.com", "chatgpt.com"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("sanitizeKillSwitchDomains() = %#v, want %#v", got, want)
+	}
+}
+
+func TestKillSwitchDomainFromNftsetEntry(t *testing.T) {
+	got := killSwitchDomainFromNftsetEntry("/openai.com/4#inet#ruopenray#killswitch4")
+	if got != "openai.com" {
+		t.Fatalf("domain = %#v, want openai.com", got)
+	}
+}
+
+func TestRouteNftsetEntryAndDomain(t *testing.T) {
+	entry := routeNftsetEntry("telegram.org", "proxy4")
+	if entry != "/telegram.org/4#inet#ruopenray#proxy4" {
+		t.Fatalf("entry = %#v", entry)
+	}
+	if got := domainFromNftsetEntry(entry, "proxy4"); got != "telegram.org" {
+		t.Fatalf("domain = %#v, want telegram.org", got)
+	}
+	if got := domainFromNftsetEntry(entry, "bypass4"); got != "" {
+		t.Fatalf("wrong set domain = %#v, want empty", got)
+	}
+}
+
+func TestKillSwitchDNSBlockEntries(t *testing.T) {
+	got := killSwitchDNSBlockEntries([]string{"openai.com", "*.chatgpt.com", "bad value"})
+	want := []string{"/openai.com/0.0.0.0", "/openai.com/::", "/chatgpt.com/0.0.0.0", "/chatgpt.com/::"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("killSwitchDNSBlockEntries() = %#v, want %#v", got, want)
+	}
+}
+
+func TestParseFirewallPortsFromLegacyBody(t *testing.T) {
+	body := `table inet ruopenray {
+  chain prerouting {
+    iifname "br-lan" meta l4proto { tcp, udp } th dport 53 counter tproxy ip to 127.0.0.1:52345 meta mark set 1 comment "RuOpenRay DNS Intercept"
+    iifname "br-lan" udp dport 443 drop comment "RuOpenRay Block QUIC"
+    iifname "br-lan" meta l4proto { tcp, udp } th dport { 80, 443 } counter tproxy ip to 127.0.0.1:52345 meta mark set 1
+  }
+}`
+	ports := parseFirewallPortsFromBody(body)
+	if len(ports) != 2 || ports[0] != "80" || ports[1] != "443" {
+		t.Fatalf("ports = %#v, want [80 443]", ports)
+	}
+}
+
+func TestExpandFirewallGeoPayloadAddsGeoTargets(t *testing.T) {
+	geoDir := t.TempDir()
+	writeFirewallGeoFixture(t, geoDir)
+	state := &serverState{cfg: appConfig{GeoDir: geoDir}}
+
+	payload := map[string]any{
+		"killSwitchIps":     []any{"162.159.140.0/24"},
+		"killSwitchDomains": []any{"openai.com"},
+		"killSwitchGeoip":   []any{"private"},
+		"killSwitchGeosite": []any{"telegram"},
+		"killSwitchExt":     []any{`ext:"LoyalsoldierSite.dat:antifilter-community"`},
+	}
+
+	expanded := state.expandFirewallGeoPayload(payload)
+	gotIPs := stringList(expanded["killSwitchIps"])
+	wantIPs := []string{"162.159.140.0/24", "10.0.0.0/8", "192.168.0.0/16"}
+	if !reflect.DeepEqual(gotIPs, wantIPs) {
+		t.Fatalf("killSwitchIps = %#v, want %#v", gotIPs, wantIPs)
+	}
+	gotDomains := stringList(expanded["killSwitchDomains"])
+	wantDomains := []string{"openai.com", "telegram.org", "t.me", "blocked.example"}
+	if !reflect.DeepEqual(gotDomains, wantDomains) {
+		t.Fatalf("killSwitchDomains = %#v, want %#v", gotDomains, wantDomains)
+	}
+	report, ok := expanded["geoExpansion"].(map[string]any)
+	if !ok {
+		t.Fatalf("geoExpansion missing: %#v", expanded["geoExpansion"])
+	}
+	if report["addedIps"] != 2 || report["addedDomains"] != 3 || report["skipped"] != 1 {
+		t.Fatalf("geoExpansion = %#v", report)
+	}
+}
+
+func TestExpandFirewallGeoPayloadAddsRouteTargets(t *testing.T) {
+	geoDir := t.TempDir()
+	writeFirewallGeoFixture(t, geoDir)
+	state := &serverState{cfg: appConfig{GeoDir: geoDir}}
+
+	expanded := state.expandFirewallGeoPayload(map[string]any{
+		"directIps":     []any{"1.1.1.1"},
+		"directDomains": []any{"router.example"},
+		"directGeoip":   []any{"private"},
+		"directGeosite": []any{"telegram"},
+		"proxyDomains":  []any{"openai.com"},
+		"proxyExt":      []any{`ext:"LoyalsoldierSite.dat:antifilter-community"`},
+	})
+
+	if got := stringList(expanded["directIps"]); !reflect.DeepEqual(got, []string{"1.1.1.1", "10.0.0.0/8", "192.168.0.0/16"}) {
+		t.Fatalf("directIps = %#v", got)
+	}
+	if got := stringList(expanded["directDomains"]); !reflect.DeepEqual(got, []string{"router.example", "telegram.org", "t.me"}) {
+		t.Fatalf("directDomains = %#v", got)
+	}
+	if got := stringList(expanded["proxyDomains"]); !reflect.DeepEqual(got, []string{"openai.com", "blocked.example"}) {
+		t.Fatalf("proxyDomains = %#v", got)
+	}
+}
+
+func TestFirewallPreviewUsesExpandedGeoTargets(t *testing.T) {
+	geoDir := t.TempDir()
+	writeFirewallGeoFixture(t, geoDir)
+	state := &serverState{cfg: appConfig{GeoDir: geoDir}}
+
+	expanded := state.expandFirewallGeoPayload(map[string]any{
+		"routerMode":             "tproxy",
+		"bypassMode":             "redirect",
+		"deviceMode":             "all",
+		"portMode":               "all",
+		"killSwitch":             true,
+		"killSwitchTargetMode":   "all",
+		"killSwitchDomainMode":   "nftset",
+		"killSwitchGeoip":        []any{"private"},
+		"killSwitchGeosite":      []any{"telegram"},
+		"transparentPort":        52345,
+		"dnsIntercept":           true,
+		"dnsInterceptPort":       5353,
+		"dnsInterceptTargetPort": 5353,
+	})
+	body, meta := rfw.NativeNft(expanded)
+	for _, needle := range []string{"10.0.0.0/8", "192.168.0.0/16", "@killswitch4", "meta l4proto { tcp, udp } counter tproxy ip to 127.0.0.1:52345"} {
+		if !strings.Contains(body, needle) {
+			t.Fatalf("nft preview missing %q:\n%s", needle, body)
+		}
+	}
+	if got := meta["killSwitchIps"]; !reflect.DeepEqual(got, []string{"10.0.0.0/8", "192.168.0.0/16"}) {
+		t.Fatalf("metadata killSwitchIps = %#v", got)
+	}
+	if got := meta["killSwitchDomains"]; !reflect.DeepEqual(got, []string{"telegram.org", "t.me"}) {
+		t.Fatalf("metadata killSwitchDomains = %#v", got)
+	}
+}
+
+func writeFirewallGeoFixture(t *testing.T, geoDir string) {
+	t.Helper()
+	if err := os.WriteFile(filepath.Join(geoDir, "geoip.dat"), protoMessage(1, protoRawMessage(
+		protoStringField(1, "private"),
+		protoMessage(2, protoRawMessage(protoBytesField(1, []byte{10, 0, 0, 0}), protoVarintField(2, 8))),
+		protoMessage(2, protoRawMessage(protoBytesField(1, []byte{192, 168, 0, 0}), protoVarintField(2, 16))),
+	)), 0o600); err != nil {
+		t.Fatalf("write geoip fixture: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(geoDir, "geosite.dat"), protoMessage(1, protoRawMessage(
+		protoStringField(1, "telegram"),
+		protoMessage(2, protoRawMessage(protoVarintField(1, 2), protoStringField(2, "telegram.org"))),
+		protoMessage(2, protoRawMessage(protoVarintField(1, 3), protoStringField(2, "t.me"))),
+		protoMessage(2, protoRawMessage(protoVarintField(1, 1), protoStringField(2, ".*\\.telegram\\.org"))),
+	)), 0o600); err != nil {
+		t.Fatalf("write geosite fixture: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(geoDir, "LoyalsoldierSite.dat"), protoMessage(1, protoRawMessage(
+		protoStringField(1, "antifilter-community"),
+		protoMessage(2, protoRawMessage(protoVarintField(1, 2), protoStringField(2, "blocked.example"))),
+	)), 0o600); err != nil {
+		t.Fatalf("write ext fixture: %v", err)
+	}
+}

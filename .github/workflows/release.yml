@@ -1,0 +1,76 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+            asset: ruopenray-ui-linux-amd64
+          - goos: linux
+            goarch: arm64
+            asset: ruopenray-ui-linux-arm64
+          - goos: linux
+            goarch: arm
+            goarm: "7"
+            asset: ruopenray-ui-linux-armv7
+          - goos: linux
+            goarch: mipsle
+            gomips: softfloat
+            asset: ruopenray-ui-linux-mipsle-softfloat
+          - goos: linux
+            goarch: mips
+            gomips: softfloat
+            asset: ruopenray-ui-linux-mips-softfloat
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Test
+        run: go test ./...
+      - name: Frontend test
+        run: npm run test:frontend
+      - name: Build
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          GOARM: ${{ matrix.goarm }}
+          GOMIPS: ${{ matrix.gomips }}
+          CGO_ENABLED: "0"
+        run: |
+          mkdir -p dist
+          go build -trimpath -ldflags="-s -w -buildid= -X main.appVersion=${{ github.ref_name }}" -o "dist/${{ matrix.asset }}" ./cmd/ruopenray-ui
+          sha256sum "dist/${{ matrix.asset }}" > "dist/${{ matrix.asset }}.sha256"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset }}
+          path: dist/${{ matrix.asset }}*
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true

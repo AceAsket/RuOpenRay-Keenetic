@@ -1,0 +1,11 @@
+data/
+qa-*.png
+/ruopenray-ui
+/ruopenray-ui.exe
+/RuOpenRay
+bin/
+dist/
+.tools/
+.tmp-xray-tests/
+.private/
+*.local.json

@@ -1,0 +1,1307 @@
+/* Light theme overrides */
+body[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f6faf9;
+  --panel: #ffffff;
+  --panel-2: #f0f6f4;
+  --line: #bed0cc;
+  --line-soft: #d8e5e2;
+  --text: #071b22;
+  --muted: #405751;
+  --soft: #284149;
+  --accent: #0a9f8b;
+  --accent-2: #047a6d;
+  --accent-strong: #035f55;
+  --green: #168b3e;
+  --amber: #b87914;
+  --red: #c33d4a;
+  --shadow: 0 12px 30px rgba(31, 53, 57, 0.12);
+  background:
+    radial-gradient(circle at 9% -12%, rgba(17, 153, 134, 0.13), transparent 28rem),
+    linear-gradient(135deg, #f7fbfa 0%, #edf5f3 48%, #f9fbfa 100%);
+}
+
+body[data-theme="light"] .sidebar {
+  border-right-color: var(--line);
+  background: rgba(255, 255, 255, 0.9);
+}
+
+body[data-theme="light"] .brand-mark {
+  background: #eaf3f0;
+  box-shadow: 0 12px 28px rgba(17, 153, 134, 0.16);
+}
+
+body[data-theme="light"] .nav button.active,
+body[data-theme="light"] .nav button:hover,
+body[data-theme="light"] .logout-button:hover {
+  background: #e9f3f0;
+}
+
+body[data-theme="light"] .panel,
+body[data-theme="light"] .stat,
+body[data-theme="light"] .core-stat,
+body[data-theme="light"] .traffic-overview-panel article,
+body[data-theme="light"] .login-card,
+body[data-theme="light"] .modal,
+body[data-theme="light"] .settings-card,
+body[data-theme="light"] .settings-check,
+body[data-theme="light"] .settings-info-grid article,
+body[data-theme="light"] .settings-storage-row,
+body[data-theme="light"] .local-proxy-card,
+body[data-theme="light"] .route-card,
+body[data-theme="light"] .route-row,
+body[data-theme="light"] .route-preset-group-row,
+body[data-theme="light"] .routing-summary-card,
+body[data-theme="light"] .route-empty-state,
+body[data-theme="light"] .route-advanced summary,
+body[data-theme="light"] .dsl-preview-stats div,
+body[data-theme="light"] .server-card,
+body[data-theme="light"] .server-flow-option,
+body[data-theme="light"] .server-external-profile,
+body[data-theme="light"] .subscription-pool,
+body[data-theme="light"] .subscription-candidate,
+body[data-theme="light"] .dns-card,
+body[data-theme="light"] .diagnostic-card,
+body[data-theme="light"] .diagnostic-row,
+body[data-theme="light"] .dns-row,
+body[data-theme="light"] .dns-server-row,
+body[data-theme="light"] .dns-diagnostics-card,
+body[data-theme="light"] .dns-diagnostics-grid article,
+body[data-theme="light"] .wizard-card,
+body[data-theme="light"] .lease-card,
+body[data-theme="light"] .mode-card,
+body[data-theme="light"] .lan-dns-readiness article,
+body[data-theme="light"] .device-rule-card,
+body[data-theme="light"] .domain-row,
+body[data-theme="light"] .log-panel,
+body[data-theme="light"] .dashboard-selected-server {
+  border-color: var(--line-soft);
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: var(--shadow);
+}
+
+body[data-theme="light"] .dash-hero,
+body[data-theme="light"] .dash-hero.is-warn,
+body[data-theme="light"] .settings-hero,
+body[data-theme="light"] .route-hero,
+body[data-theme="light"] .devices-hero,
+body[data-theme="light"] .intercept-hero {
+  border-color: rgba(17, 153, 134, 0.22);
+  background:
+    linear-gradient(135deg, rgba(10, 159, 139, 0.16), transparent 38%),
+    linear-gradient(145deg, #ffffff, #edf7f4);
+}
+
+body[data-theme="light"] .dash-hero h2,
+body[data-theme="light"] .dash-hero p,
+body[data-theme="light"] .settings-hero h2,
+body[data-theme="light"] .settings-hero p,
+body[data-theme="light"] .route-hero h2,
+body[data-theme="light"] .route-hero p,
+body[data-theme="light"] .devices-hero h2,
+body[data-theme="light"] .devices-hero p,
+body[data-theme="light"] .intercept-hero h2,
+body[data-theme="light"] .intercept-hero p {
+  color: inherit;
+}
+
+body[data-theme="light"] .route-score,
+body[data-theme="light"] .settings-hero-status,
+body[data-theme="light"] .dash-hero .metric-stat {
+  border-color: rgba(10, 159, 139, 0.22);
+  background: rgba(255, 255, 255, 0.78);
+}
+
+body[data-theme="light"] .settings-hero-status,
+body[data-theme="light"] .metric-stat,
+body[data-theme="light"] .traffic-chart,
+body[data-theme="light"] .xray-stats-panel,
+body[data-theme="light"] .xray-stats-meta span,
+body[data-theme="light"] .nand-plan-grid article,
+body[data-theme="light"] .dashboard-server-option,
+body[data-theme="light"] .server-option-pick,
+body[data-theme="light"] .current-server-panel,
+body[data-theme="light"] .dashboard-current-server,
+body[data-theme="light"] .dashboard-selected-server,
+body[data-theme="light"] .domain-monitor-state,
+body[data-theme="light"] .domain-monitor-mini-chips b {
+  border-color: var(--line-soft);
+  background: rgba(255, 255, 255, 0.82);
+}
+
+body[data-theme="light"] .core-stat.has-update,
+body[data-theme="light"] .traffic-overview-panel .traffic-overview-main,
+body[data-theme="light"] .dashboard-current-server,
+body[data-theme="light"] .lan-dns-readiness article.ok {
+  border-color: rgba(22, 139, 62, 0.26);
+  background:
+    linear-gradient(135deg, rgba(22, 139, 62, 0.09), rgba(255, 255, 255, 0.92)),
+    #ffffff;
+}
+
+body[data-theme="light"] .nand-plan,
+body[data-theme="light"] .nand-card,
+body[data-theme="light"] .lan-dns-readiness article.warn {
+  border-color: rgba(184, 121, 20, 0.28);
+  background: rgba(255, 250, 236, 0.92);
+}
+
+body[data-theme="light"] .nand-plan.danger,
+body[data-theme="light"] .nand-card.danger {
+  border-color: rgba(195, 61, 74, 0.35);
+  background: rgba(255, 241, 243, 0.92);
+}
+
+body[data-theme="light"] .route-preset-group-row.route-row-managed,
+body[data-theme="light"] .disabled-route-row,
+body[data-theme="light"] .apply-state-grid article,
+body[data-theme="light"] .leak-status-strip article,
+body[data-theme="light"] .status-card,
+body[data-theme="light"] .dns-policy-list article,
+body[data-theme="light"] .access-log-table article {
+  border-color: var(--line-soft);
+  background: rgba(255, 255, 255, 0.84);
+}
+
+body[data-theme="light"] .route-preset-group-children .route-row,
+body[data-theme="light"] .route-row-nested,
+body[data-theme="light"] .route-lease-card,
+body[data-theme="light"] .intercept-setting-card,
+body[data-theme="light"] .apply-state-panel,
+body[data-theme="light"] .dns-bootstrap-card,
+body[data-theme="light"] .domain-monitor-item,
+body[data-theme="light"] .domain-monitor-device-table-head {
+  border-color: var(--line-soft);
+  background: rgba(255, 255, 255, 0.9);
+}
+
+body[data-theme="light"] .route-drag-handle,
+body[data-theme="light"] .core-icon-action,
+body[data-theme="light"] .route-actions .icon-btn,
+body[data-theme="light"] .dns-order-controls .icon-btn,
+body[data-theme="light"] .dns-server-row > .icon-btn {
+  color: var(--accent-strong);
+  border-color: var(--line);
+  background: #f7fbfa;
+}
+
+body[data-theme="light"] .route-kind,
+body[data-theme="light"] .route-category,
+body[data-theme="light"] .server-protocol,
+body[data-theme="light"] .server-protocol.doh,
+body[data-theme="light"] .route-target-status,
+body[data-theme="light"] .domain-monitor-chips span,
+body[data-theme="light"] .domain-monitor-device-chip,
+body[data-theme="light"] .domain-monitor-mini-chips b,
+body[data-theme="light"] .server-location-chip,
+body[data-theme="light"] .server-chip {
+  color: var(--accent-strong);
+  border-color: rgba(10, 159, 139, 0.24);
+  background: rgba(10, 159, 139, 0.09);
+}
+
+body[data-theme="light"] .route-value-chips code,
+body[data-theme="light"] .route-value-chips button {
+  color: #ffffff;
+  border-color: rgba(3, 95, 85, 0.2);
+  background: var(--accent-strong);
+  box-shadow: none;
+}
+
+body[data-theme="light"] .route-meta-line span + span::before {
+  color: #8ea19c;
+}
+
+body[data-theme="light"] .table th,
+body[data-theme="light"] .access-log-table span,
+body[data-theme="light"] .access-log-table em,
+body[data-theme="light"] .dns-row span,
+body[data-theme="light"] .dns-inline-check span,
+body[data-theme="light"] .lan-dns-readiness span,
+body[data-theme="light"] .route-title span,
+body[data-theme="light"] .route-main span,
+body[data-theme="light"] .route-meta-line,
+body[data-theme="light"] .core-stat-meta em,
+body[data-theme="light"] .core-stat-result,
+body[data-theme="light"] .dashboard-current-server span,
+body[data-theme="light"] .dashboard-selected-server span,
+body[data-theme="light"] .metric-stat div > span,
+body[data-theme="light"] .metric-stat small,
+body[data-theme="light"] .traffic-overview-panel span,
+body[data-theme="light"] .traffic-overview-panel small,
+body[data-theme="light"] .domain-monitor-state span,
+body[data-theme="light"] .diagnostic-card small,
+body[data-theme="light"] .diagnostic-row span,
+body[data-theme="light"] .wizard-card span,
+body[data-theme="light"] .mode-card span,
+body[data-theme="light"] .lease-card span {
+  color: var(--muted);
+}
+
+body[data-theme="light"] .route-title strong,
+body[data-theme="light"] .route-main strong,
+body[data-theme="light"] .traffic-overview-panel strong,
+body[data-theme="light"] .diagnostic-card strong,
+body[data-theme="light"] .diagnostic-row strong,
+body[data-theme="light"] .dns-row strong,
+body[data-theme="light"] .dns-bootstrap-card strong,
+body[data-theme="light"] .lan-dns-readiness strong,
+body[data-theme="light"] .dashboard-current-server strong,
+body[data-theme="light"] .dashboard-selected-server strong,
+body[data-theme="light"] .domain-monitor-state strong,
+body[data-theme="light"] .wizard-card strong,
+body[data-theme="light"] .mode-card strong,
+body[data-theme="light"] .lease-card strong,
+body[data-theme="light"] .access-log-table strong,
+body[data-theme="light"] .access-log-table code,
+body[data-theme="light"] .access-log-table b {
+  color: var(--text);
+}
+
+body[data-theme="light"] input,
+body[data-theme="light"] select,
+body[data-theme="light"] textarea {
+  color: var(--text);
+  background-color: #ffffff;
+}
+
+body[data-theme="light"] input:focus,
+body[data-theme="light"] select:focus,
+body[data-theme="light"] textarea:focus {
+  border-color: rgba(17, 153, 134, 0.72);
+  box-shadow: 0 0 0 3px rgba(17, 153, 134, 0.12);
+}
+
+body[data-theme="light"] .pill,
+body[data-theme="light"] .service-controls,
+body[data-theme="light"] .password-toggle,
+body[data-theme="light"] .mobile-menu-toggle,
+body[data-theme="light"] .settings-subnav,
+body[data-theme="light"] .segmented,
+body[data-theme="light"] .route-target-select,
+body[data-theme="light"] .balancer-history-settings,
+body[data-theme="light"] .manual-check-settings,
+body[data-theme="light"] .observatory-settings {
+  border-color: var(--line);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+body[data-theme="light"] .mobile-menu-toggle {
+  color: var(--text);
+}
+
+body[data-theme="light"] .btn.secondary,
+body[data-theme="light"] .service-icon:hover,
+body[data-theme="light"] .profile-pill:hover,
+body[data-theme="light"] .app-version-pill:hover {
+  background: #e9f3f0;
+}
+
+body[data-theme="light"] .global-action-progress {
+  background: rgba(255, 255, 255, 0.94);
+}
+
+body[data-theme="light"] .pending-changes,
+body[data-theme="light"] .notice,
+body[data-theme="light"] .settings-warning {
+  color: #6e4a08;
+  background: rgba(255, 247, 224, 0.82);
+}
+
+body[data-theme="light"] .pending-risk-list article span,
+body[data-theme="light"] .notice-details-body p,
+body[data-theme="light"] .app-version-pill.has-update {
+  color: #6e4a08;
+}
+
+body[data-theme="light"] .pending-more {
+  color: #9a6408;
+}
+
+body[data-theme="light"] .settings-warning.danger,
+body[data-theme="light"] .notice.danger {
+  color: #8b1f2b;
+  background: rgba(255, 237, 239, 0.86);
+}
+
+body[data-theme="light"] .settings-hint,
+body[data-theme="light"] .operation-progress,
+body[data-theme="light"] .tag,
+body[data-theme="light"] .action-pill {
+  background: rgba(17, 153, 134, 0.1);
+}
+
+body[data-theme="light"] .console,
+body[data-theme="light"] .notice-details-body pre,
+body[data-theme="light"] .dsl-editor,
+body[data-theme="light"] .config-summary {
+  color: #26383e;
+  background: #f7fbfa;
+}
+
+body[data-theme="light"] .lan-dns-preview pre,
+body[data-theme="light"] .route-values-drawer,
+body[data-theme="light"] .route-values-list code {
+  color: #173038;
+  border-color: var(--line-soft);
+  background: #ffffff;
+}
+
+body[data-theme="light"] .routing-subnav,
+body[data-theme="light"] .servers-nav-panel .routing-subnav,
+body[data-theme="light"] .diagnostic-switcher,
+body[data-theme="light"] .route-section,
+body[data-theme="light"] .route-ordered-list,
+body[data-theme="light"] .route-system-panel,
+body[data-theme="light"] .traffic-monitor,
+body[data-theme="light"] .traffic-details-grid article,
+body[data-theme="light"] .xray-total-grid article,
+body[data-theme="light"] .xray-group-grid article,
+body[data-theme="light"] .xray-active-graph,
+body[data-theme="light"] .xray-outbound-list article,
+body[data-theme="light"] .server-row,
+body[data-theme="light"] .server-traffic,
+body[data-theme="light"] .dashboard-server-traffic,
+body[data-theme="light"] .subscription-candidate,
+body[data-theme="light"] .subscription-candidate-pick,
+body[data-theme="light"] .preset,
+body[data-theme="light"] .scenario-summary,
+body[data-theme="light"] .dashboard-log-details summary {
+  color: var(--text);
+  border-color: var(--line-soft);
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: var(--shadow);
+}
+
+body[data-theme="light"] .routing-subnav button,
+body[data-theme="light"] .segmented button,
+body[data-theme="light"] .settings-subnav button,
+body[data-theme="light"] .intercept-segmented button {
+  color: #36514b;
+}
+
+body[data-theme="light"] .routing-subnav button:hover,
+body[data-theme="light"] .segmented button:hover,
+body[data-theme="light"] .settings-subnav button:hover,
+body[data-theme="light"] .intercept-segmented button:hover {
+  color: var(--text);
+  background: rgba(10, 159, 139, 0.1);
+}
+
+body[data-theme="light"] .routing-subnav button.active,
+body[data-theme="light"] .segmented button.active,
+body[data-theme="light"] .settings-subnav button.active,
+body[data-theme="light"] .intercept-segmented button.active {
+  color: #ffffff;
+  background: #07945f;
+}
+
+body[data-theme="light"] .preset:hover,
+body[data-theme="light"] .server-row:hover,
+body[data-theme="light"] .subscription-candidate:hover {
+  border-color: rgba(10, 159, 139, 0.34);
+  background: #f7fcfa;
+}
+
+body[data-theme="light"] .server-row.is-active,
+body[data-theme="light"] .subscription-candidate.selected,
+body[data-theme="light"] .route-lease-card.active,
+body[data-theme="light"] .settings-check.active {
+  border-color: rgba(10, 159, 139, 0.45);
+  background:
+    linear-gradient(90deg, rgba(10, 159, 139, 0.12), rgba(255, 255, 255, 0.94)),
+    #ffffff;
+}
+
+body[data-theme="light"] .route-target-trigger,
+body[data-theme="light"] .route-target-menu,
+body[data-theme="light"] .route-target-option {
+  color: var(--text);
+  border-color: var(--line);
+  background: #ffffff;
+  box-shadow: none;
+}
+
+body[data-theme="light"] .route-target-trigger:hover,
+body[data-theme="light"] .route-target-select.open .route-target-trigger,
+body[data-theme="light"] .route-target-option.active,
+body[data-theme="light"] .route-target-option:hover {
+  color: var(--text);
+  border-color: rgba(10, 159, 139, 0.42);
+  background: #eaf7f4;
+  box-shadow: inset 0 0 0 1px rgba(10, 159, 139, 0.12);
+}
+
+body[data-theme="light"] .server-edit-section,
+body[data-theme="light"] .server-json-details,
+body[data-theme="light"] .country-picker {
+  color: var(--text);
+  border-color: var(--line-soft);
+  background:
+    linear-gradient(135deg, rgba(10, 159, 139, 0.05), rgba(255, 255, 255, 0.96)),
+    #ffffff;
+  box-shadow: none;
+}
+
+body[data-theme="light"] .server-edit-section h3,
+body[data-theme="light"] .server-json-details summary,
+body[data-theme="light"] .country-picker-head label,
+body[data-theme="light"] .country-search-current b,
+body[data-theme="light"] .country-option strong {
+  color: var(--text);
+}
+
+body[data-theme="light"] .country-search-current,
+body[data-theme="light"] .country-option {
+  color: var(--text);
+  border-color: var(--line);
+  background: #f8fcfb;
+}
+
+body[data-theme="light"] .country-search-current em,
+body[data-theme="light"] .country-option em,
+body[data-theme="light"] .country-picker-foot {
+  color: var(--muted);
+}
+
+body[data-theme="light"] .country-option.active,
+body[data-theme="light"] .country-option:hover {
+  color: var(--text);
+  border-color: rgba(10, 159, 139, 0.44);
+  background: #e5f7f3;
+}
+
+body[data-theme="light"] .route-preset-tags em {
+  color: #064538;
+  border-color: rgba(10, 159, 139, 0.28);
+  background: #dff8ed;
+  text-shadow: none;
+}
+
+body[data-theme="light"] .route-system-panel > summary span,
+body[data-theme="light"] .route-system-panel > summary small,
+body[data-theme="light"] .server-main strong,
+body[data-theme="light"] .server-main span,
+body[data-theme="light"] .server-meta span,
+body[data-theme="light"] .server-traffic span,
+body[data-theme="light"] .server-traffic small,
+body[data-theme="light"] .dashboard-server-traffic span,
+body[data-theme="light"] .dashboard-server-traffic small,
+body[data-theme="light"] .xray-total-grid span,
+body[data-theme="light"] .xray-total-grid small,
+body[data-theme="light"] .xray-group-grid span,
+body[data-theme="light"] .xray-group-grid small,
+body[data-theme="light"] .xray-outbound-list span,
+body[data-theme="light"] .xray-outbound-list small,
+body[data-theme="light"] .xray-active-graph span,
+body[data-theme="light"] .xray-active-graph small,
+body[data-theme="light"] .preset span {
+  color: var(--muted);
+}
+
+body[data-theme="light"] .server-traffic strong,
+body[data-theme="light"] .dashboard-server-traffic strong,
+body[data-theme="light"] .xray-total-grid strong,
+body[data-theme="light"] .xray-group-grid strong,
+body[data-theme="light"] .xray-active-graph strong,
+body[data-theme="light"] .xray-outbound-list strong,
+body[data-theme="light"] .xray-outbound-list b,
+body[data-theme="light"] .preset strong {
+  color: var(--text);
+}
+
+body[data-theme="light"] .server-traffic.muted,
+body[data-theme="light"] .server-check-pill.muted {
+  opacity: 1;
+  color: #4b5f5a;
+  background: #edf3f1;
+}
+
+body[data-theme="light"] .server-ping,
+body[data-theme="light"] .server-check-pill {
+  color: #36514b;
+  border-color: var(--line);
+  background: #f5faf8;
+}
+
+body[data-theme="light"] .server-ping.ok,
+body[data-theme="light"] .server-check-pill.ok {
+  color: #063814;
+  background: #76e58b;
+}
+
+body[data-theme="light"] .server-ping.bad,
+body[data-theme="light"] .server-check-pill.bad {
+  color: #8b1f2b;
+  border-color: rgba(195, 61, 74, 0.3);
+  background: #ffe5e8;
+}
+
+body[data-theme="light"] .server-ping.warn,
+body[data-theme="light"] .server-check-pill.warn {
+  color: #5d3c00;
+  background: #ffe39a;
+}
+
+body[data-theme="light"] .xray-active-graph svg,
+body[data-theme="light"] .traffic-chart svg {
+  background: #f0f6f4;
+}
+
+body[data-theme="light"] .xray-core-metrics article,
+body[data-theme="light"] .xray-dashboard-strip article,
+body[data-theme="light"] .flow-step,
+body[data-theme="light"] .dashboard-proxy-directions article,
+body[data-theme="light"] .scenario-card,
+body[data-theme="light"] .scenario-card.custom,
+body[data-theme="light"] .scenario-card.installed,
+body[data-theme="light"] .scenario-card.partial,
+body[data-theme="light"] .scenario-source-box,
+body[data-theme="light"] .scenario-source-list article,
+body[data-theme="light"] .scenario-source-preview span,
+body[data-theme="light"] .setup-page-head,
+body[data-theme="light"] .setup-guide-rail,
+body[data-theme="light"] .setup-guide-workspace,
+body[data-theme="light"] .setup-stepper,
+body[data-theme="light"] .setup-step-summary,
+body[data-theme="light"] .setup-step-panel,
+body[data-theme="light"] .setup-readiness article,
+body[data-theme="light"] .setup-result-list article,
+body[data-theme="light"] .setup-choice-grid article,
+body[data-theme="light"] .setup-mode-grid article,
+body[data-theme="light"] .setup-flow-guide,
+body[data-theme="light"] .setup-flow-step,
+body[data-theme="light"] .setup-lan-dns,
+body[data-theme="light"] .setup-snapshot,
+body[data-theme="light"] .install-command-card,
+body[data-theme="light"] .install-steps article,
+body[data-theme="light"] .install-summary article,
+body[data-theme="light"] .core-install-card,
+body[data-theme="light"] .route-system-row,
+body[data-theme="light"] .route-system-explainer,
+body[data-theme="light"] .geo-upload-panel {
+  color: var(--text);
+  border-color: var(--line-soft);
+  background:
+    linear-gradient(135deg, rgba(10, 159, 139, 0.05), rgba(255, 255, 255, 0.94)),
+    #ffffff;
+  box-shadow: var(--shadow);
+}
+
+body[data-theme="light"] .scenario-card:hover,
+body[data-theme="light"] .setup-mode-grid article.active,
+body[data-theme="light"] .setup-flow-step.ok,
+body[data-theme="light"] .setup-stepper button.active,
+body[data-theme="light"] .setup-stepper button.ok {
+  border-color: rgba(10, 159, 139, 0.42);
+  background:
+    linear-gradient(135deg, rgba(10, 159, 139, 0.13), rgba(255, 255, 255, 0.92)),
+    #ffffff;
+}
+
+body[data-theme="light"] .setup-stepper button {
+  color: #36514b;
+  background: #ffffff;
+}
+
+body[data-theme="light"] .setup-stepper button.active {
+  box-shadow: inset 4px 0 0 var(--accent);
+}
+
+body[data-theme="light"] .setup-stepper button.ok {
+  border-color: rgba(22, 139, 62, 0.28);
+}
+
+body[data-theme="light"] .setup-stepper span {
+  color: #ffffff;
+  background: #7f948e;
+}
+
+body[data-theme="light"] .setup-stepper button.ok span,
+body[data-theme="light"] .setup-stepper button.active.ok span,
+body[data-theme="light"] .setup-readiness article.ok > span,
+body[data-theme="light"] .setup-result-list article.ok > span,
+body[data-theme="light"] .setup-flow-step.ok > span,
+body[data-theme="light"] .install-steps article.ok > span {
+  color: #ffffff;
+  background: #078142;
+  text-shadow: none;
+}
+
+body[data-theme="light"] .setup-stepper button.warn span,
+body[data-theme="light"] .setup-readiness article.warn > span,
+body[data-theme="light"] .setup-result-list article.warn > span {
+  color: #3e2800;
+  background: #f6c252;
+}
+
+body[data-theme="light"] .setup-readiness article.bad > span,
+body[data-theme="light"] .setup-result-list article.bad > span {
+  color: #ffffff;
+  background: #b52d3b;
+}
+
+body[data-theme="light"] .setup-guide-rail .setup-stepper {
+  background: transparent;
+  box-shadow: none;
+}
+
+body[data-theme="light"] .setup-guide-rail {
+  align-self: start;
+}
+
+body[data-theme="light"] .setup-step-panel {
+  background:
+    linear-gradient(180deg, rgba(10, 159, 139, 0.06), rgba(255, 255, 255, 0.94) 170px),
+    #ffffff;
+}
+
+body[data-theme="light"] .setup-readiness article,
+body[data-theme="light"] .setup-result-list article {
+  border-color: rgba(10, 159, 139, 0.18);
+}
+
+body[data-theme="light"] .setup-readiness article.ok,
+body[data-theme="light"] .setup-result-list article.ok {
+  border-color: rgba(22, 139, 62, 0.24);
+  background:
+    linear-gradient(135deg, rgba(22, 139, 62, 0.07), rgba(255, 255, 255, 0.95)),
+    #ffffff;
+}
+
+body[data-theme="light"] .setup-readiness article.warn,
+body[data-theme="light"] .setup-result-list article.warn {
+  border-color: rgba(184, 121, 20, 0.28);
+  background: #fff8e6;
+}
+
+body[data-theme="light"] .setup-readiness article.bad,
+body[data-theme="light"] .setup-result-list article.bad {
+  border-color: rgba(195, 61, 74, 0.32);
+  background: #fff1f3;
+}
+
+body[data-theme="light"] .xray-core-status span,
+body[data-theme="light"] .xray-core-metrics span,
+body[data-theme="light"] .xray-core-metrics small,
+body[data-theme="light"] .xray-dashboard-strip span,
+body[data-theme="light"] .xray-dashboard-strip small,
+body[data-theme="light"] .flow-step span,
+body[data-theme="light"] .flow-step small,
+body[data-theme="light"] .dashboard-proxy-directions span,
+body[data-theme="light"] .dashboard-proxy-directions small,
+body[data-theme="light"] .scenario-card span,
+body[data-theme="light"] .setup-page-head p,
+body[data-theme="light"] .setup-rail-title span,
+body[data-theme="light"] .setup-stepper small,
+body[data-theme="light"] .setup-step-summary span,
+body[data-theme="light"] .setup-step-summary p,
+body[data-theme="light"] .setup-step-notice span,
+body[data-theme="light"] .setup-step-panel p,
+body[data-theme="light"] .setup-readiness small,
+body[data-theme="light"] .setup-result-list small,
+body[data-theme="light"] .setup-choice-grid span,
+body[data-theme="light"] .setup-choice-grid small,
+body[data-theme="light"] .setup-mode-grid span,
+body[data-theme="light"] .setup-flow-guide p,
+body[data-theme="light"] .setup-flow-step small,
+body[data-theme="light"] .setup-lan-dns p,
+body[data-theme="light"] .setup-snapshot p,
+body[data-theme="light"] .install-command-card span,
+body[data-theme="light"] .install-command-card small,
+body[data-theme="light"] .install-steps small,
+body[data-theme="light"] .install-summary span,
+body[data-theme="light"] .core-install-card span,
+body[data-theme="light"] .route-system-row span,
+body[data-theme="light"] .route-system-row small,
+body[data-theme="light"] .route-system-explainer p {
+  color: var(--muted);
+}
+
+body[data-theme="light"] .xray-core-status strong,
+body[data-theme="light"] .xray-core-metrics strong,
+body[data-theme="light"] .xray-dashboard-strip strong,
+body[data-theme="light"] .flow-step strong,
+body[data-theme="light"] .dashboard-proxy-directions strong,
+body[data-theme="light"] .scenario-card strong,
+body[data-theme="light"] .setup-page-head h2,
+body[data-theme="light"] .setup-rail-title strong,
+body[data-theme="light"] .setup-stepper strong,
+body[data-theme="light"] .setup-step-summary strong,
+body[data-theme="light"] .setup-step-notice strong,
+body[data-theme="light"] .setup-step-panel h3,
+body[data-theme="light"] .setup-readiness strong,
+body[data-theme="light"] .setup-result-list strong,
+body[data-theme="light"] .setup-choice-grid strong,
+body[data-theme="light"] .setup-mode-grid strong,
+body[data-theme="light"] .setup-flow-guide h3,
+body[data-theme="light"] .setup-flow-step strong,
+body[data-theme="light"] .setup-lan-dns h3,
+body[data-theme="light"] .setup-snapshot h3,
+body[data-theme="light"] .install-command-card strong,
+body[data-theme="light"] .install-steps strong,
+body[data-theme="light"] .install-summary strong,
+body[data-theme="light"] .core-install-card strong,
+body[data-theme="light"] .route-system-row strong,
+body[data-theme="light"] .route-system-explainer strong {
+  color: var(--text);
+}
+
+body[data-theme="light"] .server-action-icon,
+body[data-theme="light"] .dashboard-server-action,
+body[data-theme="light"] .server-option-actions .compact-action {
+  color: var(--text);
+  border-color: var(--line);
+  background: #eaf3f0;
+}
+
+body[data-theme="light"] .server-action-icon:hover:not(:disabled),
+body[data-theme="light"] .dashboard-server-action:hover:not(:disabled) {
+  color: var(--accent-strong);
+  border-color: rgba(10, 159, 139, 0.34);
+  background: #dff2ee;
+}
+
+body[data-theme="light"] .setup-page-head {
+  background:
+    linear-gradient(135deg, rgba(10, 159, 139, 0.09), transparent 56%),
+    #ffffff;
+  box-shadow: 0 16px 40px rgba(31, 53, 57, 0.1);
+}
+
+body[data-theme="light"] .setup-guide-workspace {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+body[data-theme="light"] .setup-guide-rail {
+  background:
+    linear-gradient(180deg, rgba(10, 159, 139, 0.08), transparent 42%),
+    rgba(255, 255, 255, 0.92);
+}
+
+body[data-theme="light"] .setup-guide-rail .setup-stepper::before {
+  background: #d6e5e1;
+}
+
+body[data-theme="light"] .setup-stepper button {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+body[data-theme="light"] .setup-stepper button:hover {
+  border-color: rgba(10, 159, 139, 0.2);
+  background: rgba(10, 159, 139, 0.06);
+}
+
+body[data-theme="light"] .setup-stepper button.active {
+  border-color: rgba(10, 159, 139, 0.34);
+  background:
+    linear-gradient(135deg, rgba(10, 159, 139, 0.13), rgba(255, 255, 255, 0.92)),
+    #ffffff;
+  box-shadow: none;
+}
+
+body[data-theme="light"] .setup-stepper button.ok {
+  border-color: transparent;
+  background: transparent;
+}
+
+body[data-theme="light"] .setup-stepper span {
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.95);
+}
+
+body[data-theme="light"] .setup-stepper button.pending span {
+  color: #6f8580;
+  border-color: #c7d8d4;
+  background: #ffffff;
+}
+
+body[data-theme="light"] .setup-step-summary {
+  background: #f7fbfa;
+  box-shadow: none;
+}
+
+body[data-theme="light"] .setup-step-summary-head em {
+  color: var(--accent-strong);
+  border-color: rgba(10, 159, 139, 0.2);
+  background: rgba(10, 159, 139, 0.08);
+}
+
+body[data-theme="light"] .setup-progress {
+  background: #e4efec;
+}
+
+body[data-theme="light"] .setup-step-panel {
+  background:
+    linear-gradient(180deg, rgba(10, 159, 139, 0.05), transparent 180px),
+    #ffffff;
+  box-shadow: 0 16px 40px rgba(31, 53, 57, 0.1);
+}
+
+body[data-theme="light"] .setup-readiness article,
+body[data-theme="light"] .setup-result-list article,
+body[data-theme="light"] .setup-choice-grid article,
+body[data-theme="light"] .setup-mode-grid article {
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: none;
+}
+
+body[data-theme="light"] .setup-mode-grid article.active {
+  background:
+    linear-gradient(135deg, rgba(22, 139, 62, 0.08), rgba(255, 255, 255, 0.94)),
+    #ffffff;
+}
+
+body[data-theme="light"] .setup-step-actions {
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 12px 30px rgba(31, 53, 57, 0.08);
+}
+
+body[data-theme="light"] .server-action-icon.warning,
+body[data-theme="light"] .dashboard-server-action.warning {
+  color: #1b1605;
+  border-color: rgba(184, 121, 20, 0.35);
+  background: #f6c252;
+}
+
+body[data-theme="light"] .server-action-icon.active,
+body[data-theme="light"] .dashboard-server-action.active {
+  color: #063814;
+  border-color: rgba(22, 139, 62, 0.35);
+  background: #76e58b;
+}
+
+body[data-theme="light"] .server-action-icon.danger,
+body[data-theme="light"] .dashboard-server-action.danger {
+  color: #9b2430;
+  border-color: rgba(195, 61, 74, 0.28);
+  background: #f9d8dc;
+}
+
+body[data-theme="light"] .dashboard-server-option.active .server-traffic.muted,
+body[data-theme="light"] .dashboard-server-option.active .server-check-pill.muted {
+  opacity: 1;
+  color: var(--muted);
+  background: #edf3f1;
+}
+
+body[data-theme="light"] .mode-card:hover,
+body[data-theme="light"] .mode-card.active,
+body[data-theme="light"] .geo-presets button.active,
+body[data-theme="light"] .geo-extra-select label.active,
+body[data-theme="light"] .geo-source-list article.active,
+body[data-theme="light"] .geo-catalog-actions .btn.active,
+body[data-theme="light"] .geo-content-toggle.active,
+body[data-theme="light"] .firewall-device.active {
+  color: var(--text);
+  border-color: rgba(10, 159, 139, 0.42);
+  background:
+    linear-gradient(135deg, rgba(10, 159, 139, 0.13), rgba(255, 255, 255, 0.92)),
+    #ffffff;
+}
+
+body[data-theme="light"] .geo-presets button,
+body[data-theme="light"] .geo-options,
+body[data-theme="light"] .geo-schedule,
+body[data-theme="light"] .geo-extra-select label,
+body[data-theme="light"] .geo-manager-details > summary,
+body[data-theme="light"] .geo-nand-files > summary,
+body[data-theme="light"] .geo-source-list article,
+body[data-theme="light"] .geo-catalog-panel,
+body[data-theme="light"] .geo-catalog-category,
+body[data-theme="light"] .geo-catalog-category-card,
+body[data-theme="light"] .geo-catalog-full,
+body[data-theme="light"] .geo-dat-edit-note,
+body[data-theme="light"] .geo-list-saved article,
+body[data-theme="light"] .geo-doctor-grid article,
+body[data-theme="light"] .geo-audit-list article,
+body[data-theme="light"] .geo-audit-tech pre,
+body[data-theme="light"] .geo-file-card,
+body[data-theme="light"] .geo-file-catalog .geo-catalog-panel,
+body[data-theme="light"] .firewall-device,
+body[data-theme="light"] .leak-scope-panel,
+body[data-theme="light"] .leak-pending-box,
+body[data-theme="light"] .leak-check-list article,
+body[data-theme="light"] .firewall-safety-panel,
+body[data-theme="light"] .firewall-safety-list article,
+body[data-theme="light"] .firewall-preview-grid article,
+body[data-theme="light"] .firewall-steps div,
+body[data-theme="light"] .device-row,
+body[data-theme="light"] .lan-dns-preview pre {
+  color: var(--text);
+  border-color: var(--line-soft);
+  background: #ffffff;
+  box-shadow: none;
+}
+
+body[data-theme="light"] .geo-manager-details[open] > summary,
+body[data-theme="light"] .geo-nand-files[open] > summary,
+body[data-theme="light"] .geo-catalog-category:hover,
+body[data-theme="light"] .geo-catalog-category:focus-visible,
+body[data-theme="light"] .geo-catalog-full:hover,
+body[data-theme="light"] .geo-catalog-full:focus-visible,
+body[data-theme="light"] .geo-content-toggle:hover,
+body[data-theme="light"] .leak-check-list article.ok,
+body[data-theme="light"] .apply-state-panel.ok,
+body[data-theme="light"] .apply-state-grid article.ok,
+body[data-theme="light"] .firewall-safety-panel.safe {
+  color: var(--text);
+  border-color: rgba(22, 139, 62, 0.26);
+  background:
+    linear-gradient(135deg, rgba(22, 139, 62, 0.08), rgba(255, 255, 255, 0.95)),
+    #ffffff;
+}
+
+body[data-theme="light"] .geo-dat-edit-note.warning,
+body[data-theme="light"] .geo-doctor-grid article.danger,
+body[data-theme="light"] .geo-audit-list article.danger,
+body[data-theme="light"] .geo-audit-list article.warn,
+body[data-theme="light"] .leak-status-strip.warn article,
+body[data-theme="light"] .leak-check-list article.warn,
+body[data-theme="light"] .apply-state-panel,
+body[data-theme="light"] .firewall-safety-panel,
+body[data-theme="light"] .status-card.warn,
+body[data-theme="light"] .firewall-safety-list article.danger {
+  border-color: rgba(184, 121, 20, 0.28);
+  background: #fff7df;
+}
+
+body[data-theme="light"] .firewall-safety-panel.danger {
+  border-color: rgba(195, 61, 74, 0.35);
+  background: #fff1f3;
+}
+
+body[data-theme="light"] .geo-presets small,
+body[data-theme="light"] .geo-presets span,
+body[data-theme="light"] .geo-extra-select span,
+body[data-theme="light"] .geo-extra-select em,
+body[data-theme="light"] .geo-manager-details > summary span,
+body[data-theme="light"] .geo-nand-files > summary small,
+body[data-theme="light"] .geo-source-list span,
+body[data-theme="light"] .geo-source-list code,
+body[data-theme="light"] .geo-catalog-category span,
+body[data-theme="light"] .geo-dat-edit-note span,
+body[data-theme="light"] .geo-list-saved span,
+body[data-theme="light"] .geo-list-saved small,
+body[data-theme="light"] .geo-file-main span,
+body[data-theme="light"] .geo-doctor-grid span,
+body[data-theme="light"] .geo-doctor-grid small,
+body[data-theme="light"] .geo-audit-list small,
+body[data-theme="light"] .geo-audit-list code,
+body[data-theme="light"] .firewall-device em,
+body[data-theme="light"] .leak-status-strip span,
+body[data-theme="light"] .leak-pending-box small,
+body[data-theme="light"] .leak-check-list em,
+body[data-theme="light"] .apply-state-head span,
+body[data-theme="light"] .apply-state-more,
+body[data-theme="light"] .apply-state-grid small,
+body[data-theme="light"] .firewall-safety-panel > span,
+body[data-theme="light"] .firewall-safety-head span,
+body[data-theme="light"] .firewall-safety-list em,
+body[data-theme="light"] .firewall-preview-grid span,
+body[data-theme="light"] .firewall-preview-grid small,
+body[data-theme="light"] .status-card small,
+body[data-theme="light"] .firewall-steps span,
+body[data-theme="light"] .device-main span,
+body[data-theme="light"] .lan-dns-preview pre {
+  color: var(--muted);
+}
+
+body[data-theme="light"] .geo-presets strong,
+body[data-theme="light"] .geo-extra-select strong,
+body[data-theme="light"] .geo-manager-details > summary h2,
+body[data-theme="light"] .geo-nand-files > summary span,
+body[data-theme="light"] .geo-source-list strong,
+body[data-theme="light"] .geo-catalog-category strong,
+body[data-theme="light"] .geo-list-saved strong,
+body[data-theme="light"] .geo-file-main strong,
+body[data-theme="light"] .geo-doctor-grid strong,
+body[data-theme="light"] .geo-audit-list strong,
+body[data-theme="light"] .firewall-device strong,
+body[data-theme="light"] .leak-status-strip strong,
+body[data-theme="light"] .apply-state-head strong,
+body[data-theme="light"] .apply-state-grid strong,
+body[data-theme="light"] .firewall-safety-panel > strong,
+body[data-theme="light"] .firewall-safety-head strong,
+body[data-theme="light"] .firewall-safety-list strong,
+body[data-theme="light"] .firewall-preview-grid strong,
+body[data-theme="light"] .status-card strong,
+body[data-theme="light"] .device-main strong {
+  color: var(--text);
+}
+
+body[data-theme="light"] .geo-presets code,
+body[data-theme="light"] .geo-source-list code,
+body[data-theme="light"] .geo-list-saved code,
+body[data-theme="light"] .geo-file-main code,
+body[data-theme="light"] .geo-audit-list code,
+body[data-theme="light"] .geo-audit-list .geo-audit-advice,
+body[data-theme="light"] .geo-warning,
+body[data-theme="light"] .geo-list-warning {
+  color: #8a5a0d !important;
+}
+
+body[data-theme="light"] .geo-coverage-badge,
+body[data-theme="light"] .geo-coverage-badge.system,
+body[data-theme="light"] .geo-content-toggle span,
+body[data-theme="light"] .geo-audit-kind,
+body[data-theme="light"] .firewall-safety-list b {
+  color: var(--accent-strong);
+  border-color: rgba(10, 159, 139, 0.24);
+  background: rgba(10, 159, 139, 0.09);
+}
+
+body[data-theme="light"] .toggle-row,
+body[data-theme="light"] .client-test-grid article,
+body[data-theme="light"] .observatory-tags span,
+body[data-theme="light"] .traffic-period-pill,
+body[data-theme="light"] .domain-monitor-filters button {
+  opacity: 1;
+  color: var(--text);
+  border-color: var(--line-soft);
+  background: #ffffff;
+  box-shadow: none;
+}
+
+body[data-theme="light"] .toggle-row:has(input:disabled),
+body[data-theme="light"] .toggle-row:has(input[readonly]),
+body[data-theme="light"] .observatory-tags .muted,
+body[data-theme="light"] .traffic-period-pill {
+  color: #36514b;
+  border-color: rgba(10, 159, 139, 0.2);
+  background: #edf7f4;
+}
+
+body[data-theme="light"] .toggle-row span,
+body[data-theme="light"] .toggle-row strong,
+body[data-theme="light"] .client-test-grid strong,
+body[data-theme="light"] .domain-monitor-filters button strong {
+  color: inherit;
+}
+
+body[data-theme="light"] .client-test-grid span,
+body[data-theme="light"] .client-test-grid code {
+  color: var(--muted);
+}
+
+body[data-theme="light"] .domain-monitor-filters button {
+  color: var(--accent-strong);
+  background: #f8fcfb;
+}
+
+body[data-theme="light"] .domain-monitor-filters button.active {
+  color: #071015;
+  border-color: rgba(98, 210, 111, 0.68);
+  background: var(--ok);
+}
+
+body[data-theme="light"] input[type="file"] {
+  color: var(--text);
+  background: #ffffff;
+}
+
+body[data-theme="light"] input[type="file"]::file-selector-button {
+  margin-right: 10px;
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #eaf3f0;
+  font-weight: 800;
+}
+
+body[data-theme="light"] .scenario-card small,
+body[data-theme="light"] .scenario-install-badge {
+  color: #ffffff;
+  border: 1px solid rgba(3, 95, 85, 0.18);
+  background: #078142;
+  text-shadow: none;
+}
+
+body[data-theme="light"] .settings-check,
+body[data-theme="light"] .advanced-card,
+body[data-theme="light"] .local-proxy-status,
+body[data-theme="light"] .manual-check-settings,
+body[data-theme="light"] .observatory-grid article,
+body[data-theme="light"] .observatory-targets article,
+body[data-theme="light"] .intercept-summary-grid article,
+body[data-theme="light"] .intercept-choice-list button,
+body[data-theme="light"] .domain-monitor-health-details,
+body[data-theme="light"] .domain-monitor-health article,
+body[data-theme="light"] .domain-monitor-help,
+body[data-theme="light"] .domain-monitor-help-actions,
+body[data-theme="light"] .domain-monitor-events-controls,
+body[data-theme="light"] .domain-monitor-scroll-window,
+body[data-theme="light"] .domain-monitor-events-window,
+body[data-theme="light"] .domain-monitor-device-filter,
+body[data-theme="light"] .domain-monitor-item,
+body[data-theme="light"] .domain-monitor-device,
+body[data-theme="light"] .domain-monitor-device-details,
+body[data-theme="light"] .domain-monitor-device-toggle,
+body[data-theme="light"] .domain-monitor-chips span,
+body[data-theme="light"] .domain-monitor-device-domains span,
+body[data-theme="light"] .domain-probe,
+body[data-theme="light"] .dpi-check-card,
+body[data-theme="light"] .dpi-compare-label,
+body[data-theme="light"] .dpi-compare-table,
+body[data-theme="light"] .sni-map-center,
+body[data-theme="light"] .sni-map-point,
+body[data-theme="light"] .sni-row {
+  color: var(--text);
+  border-color: var(--line-soft);
+  background: #ffffff;
+  box-shadow: none;
+}
+
+body[data-theme="light"] .settings-check.active,
+body[data-theme="light"] .advanced-card.active,
+body[data-theme="light"] .local-proxy-card.active,
+body[data-theme="light"] .local-proxy-status.ok,
+body[data-theme="light"] .intercept-choice-list button.active,
+body[data-theme="light"] .domain-monitor-state.running,
+body[data-theme="light"] .domain-monitor-health article.ok,
+body[data-theme="light"] .domain-monitor-device.active,
+body[data-theme="light"] .domain-monitor-device.expanded,
+body[data-theme="light"] .domain-probe.both-ok,
+body[data-theme="light"] .domain-probe.direct-only,
+body[data-theme="light"] .dpi-verdict,
+body[data-theme="light"] .dpi-check-card.ok,
+body[data-theme="light"] .sni-row.focused,
+body[data-theme="light"] .sni-map-point.near {
+  color: var(--text);
+  border-color: rgba(10, 159, 139, 0.42);
+  background:
+    linear-gradient(135deg, rgba(10, 159, 139, 0.12), rgba(255, 255, 255, 0.94)),
+    #ffffff;
+}
+
+body[data-theme="light"] .domain-monitor-state.stopped,
+body[data-theme="light"] .domain-monitor-health article.warn,
+body[data-theme="light"] .domain-monitor-events-actions > .btn.active,
+body[data-theme="light"] .observatory-grid article.warn,
+body[data-theme="light"] .domain-probe.pending,
+body[data-theme="light"] .dpi-check-card.warn {
+  color: var(--text);
+  border-color: rgba(184, 121, 20, 0.28);
+  background: #fff7df;
+}
+
+body[data-theme="light"] .domain-monitor-health article.bad,
+body[data-theme="light"] .domain-probe.down,
+body[data-theme="light"] .domain-probe.bad,
+body[data-theme="light"] .dpi-check-card.bad {
+  color: var(--text);
+  border-color: rgba(195, 61, 74, 0.32);
+  background: #fff1f3;
+}
+
+body[data-theme="light"] .sni-map {
+  border-color: var(--line-soft);
+  background:
+    linear-gradient(90deg, rgba(10, 159, 139, 0.1) 1px, transparent 1px),
+    linear-gradient(rgba(10, 159, 139, 0.1) 1px, transparent 1px),
+    radial-gradient(circle at 50% 50%, rgba(10, 159, 139, 0.18), #f7fbfa 42%, #e8f2ef 100%);
+  background-size: 44px 44px, 44px 44px, 100% 100%;
+}
+
+body[data-theme="light"] .sni-map-grid::before,
+body[data-theme="light"] .sni-map-grid::after {
+  background: rgba(10, 159, 139, 0.2);
+}
+
+body[data-theme="light"] .settings-check em,
+body[data-theme="light"] .settings-field small,
+body[data-theme="light"] .advanced-card span,
+body[data-theme="light"] .local-proxy-status,
+body[data-theme="light"] .manual-check-settings > span,
+body[data-theme="light"] .observatory-grid span,
+body[data-theme="light"] .observatory-targets span,
+body[data-theme="light"] .intercept-summary-grid small,
+body[data-theme="light"] .intercept-setting-card small,
+body[data-theme="light"] .intercept-choice-list em,
+body[data-theme="light"] .domain-monitor-state span,
+body[data-theme="light"] .domain-monitor-health-summary,
+body[data-theme="light"] .domain-monitor-health small,
+body[data-theme="light"] .domain-monitor-help-actions span,
+body[data-theme="light"] .domain-monitor-help-actions small,
+body[data-theme="light"] .domain-monitor-help ol,
+body[data-theme="light"] .domain-monitor-device-chip,
+body[data-theme="light"] .domain-monitor-events-controls span,
+body[data-theme="light"] .domain-monitor-device-filter span,
+body[data-theme="light"] .domain-monitor-device-filter small,
+body[data-theme="light"] .domain-monitor-main small,
+body[data-theme="light"] .domain-monitor-count small,
+body[data-theme="light"] .domain-monitor-device-count small,
+body[data-theme="light"] .domain-probe span,
+body[data-theme="light"] .domain-probe small,
+body[data-theme="light"] .dpi-verdict span,
+body[data-theme="light"] .dpi-verdict small,
+body[data-theme="light"] .dpi-check-card span,
+body[data-theme="light"] .dpi-check-card small,
+body[data-theme="light"] .dpi-check-card em,
+body[data-theme="light"] .dpi-compare-head,
+body[data-theme="light"] .sni-map-center span,
+body[data-theme="light"] .sni-map-point small,
+body[data-theme="light"] .sni-map-empty,
+body[data-theme="light"] .sni-main span,
+body[data-theme="light"] .sni-proximity span {
+  color: var(--muted);
+}
+
+body[data-theme="light"] .settings-check strong,
+body[data-theme="light"] .advanced-card strong,
+body[data-theme="light"] .manual-check-settings > strong,
+body[data-theme="light"] .observatory-grid strong,
+body[data-theme="light"] .observatory-targets strong,
+body[data-theme="light"] .intercept-summary-grid strong,
+body[data-theme="light"] .intercept-choice-list strong,
+body[data-theme="light"] .domain-monitor-state strong,
+body[data-theme="light"] .domain-monitor-health strong,
+body[data-theme="light"] .domain-monitor-help-actions strong,
+body[data-theme="light"] .domain-monitor-events-controls strong,
+body[data-theme="light"] .domain-monitor-device-filter strong,
+body[data-theme="light"] .domain-monitor-main strong,
+body[data-theme="light"] .domain-monitor-flow,
+body[data-theme="light"] .domain-probe strong,
+body[data-theme="light"] .dpi-verdict strong,
+body[data-theme="light"] .dpi-check-card strong,
+body[data-theme="light"] .dpi-compare-label,
+body[data-theme="light"] .sni-map-center strong,
+body[data-theme="light"] .sni-map-point span,
+body[data-theme="light"] .sni-main strong,
+body[data-theme="light"] .sni-proximity strong {
+  color: var(--text);
+}
+
+body[data-theme="light"] .settings-check b,
+body[data-theme="light"] .domain-monitor-health-title::before,
+body[data-theme="light"] .domain-monitor-health-summary b,
+body[data-theme="light"] .domain-monitor-device-chip,
+body[data-theme="light"] .domain-monitor-device-chip b,
+body[data-theme="light"] .domain-monitor-kind,
+body[data-theme="light"] .domain-monitor-mini-chips b,
+body[data-theme="light"] .domain-monitor-count strong {
+  color: var(--accent-strong);
+  border-color: rgba(10, 159, 139, 0.24);
+  background: rgba(10, 159, 139, 0.09);
+}
+
+body[data-theme="light"] .intercept-summary-grid span,
+body[data-theme="light"] .intercept-label,
+body[data-theme="light"] .observatory-grid span,
+body[data-theme="light"] .observatory-targets span {
+  color: var(--accent-strong);
+  background: transparent;
+}
+
+body[data-theme="light"] .modal-backdrop {
+  background: rgba(20, 34, 38, 0.24);
+}
+
+@media (max-width: 860px) {
+  body[data-theme="light"] .sidebar {
+    background: rgba(255, 255, 255, 0.95);
+  }
+}

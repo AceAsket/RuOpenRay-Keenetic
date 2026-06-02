@@ -1,0 +1,71 @@
+{% include('header') %}
+
+<h2 name="content">{{ _('RuOpenRay UI') }}</h2>
+
+<style>
+	.ruopenray-actions {
+		margin-top: 12px;
+	}
+
+	.ruopenray-launch {
+		display: inline-flex !important;
+		align-items: center;
+		justify-content: center;
+		width: auto !important;
+		min-width: 0 !important;
+		max-width: max-content !important;
+		height: auto !important;
+		min-height: 0 !important;
+		margin: 0 !important;
+		padding: 8px 14px !important;
+		border: 1px solid #35bff0;
+		border-radius: 4px;
+		box-sizing: border-box;
+		background: transparent !important;
+		color: #35bff0 !important;
+		font-size: 14px !important;
+		line-height: 1.2 !important;
+		text-decoration: none !important;
+	}
+
+	.ruopenray-launch:hover {
+		background: rgba(53, 191, 240, 0.12) !important;
+	}
+</style>
+
+<div class="cbi-map">
+	<div class="cbi-map-descr">
+		Отдельная панель управления Xray: серверы, маршруты, DNS, логи и обновление ядра.
+	</div>
+
+	<div class="cbi-section">
+		<p>RuOpenRay работает на роутере как отдельный веб-сервис.</p>
+		<p>
+			<strong>Дашборд:</strong>
+			<a id="ruopenray-link" href="http://192.168.1.1:9090/" target="_blank" rel="noopener">http://192.168.1.1:9090/</a>
+		</p>
+		<p class="ruopenray-actions">
+			<a id="ruopenray-open" class="ruopenray-launch" href="http://192.168.1.1:9090/" target="_blank" rel="noopener">
+				Открыть RuOpenRay UI
+			</a>
+		</p>
+	</div>
+</div>
+
+<script>
+	(function() {
+		var url = window.location.protocol + '//' + window.location.hostname + ':9090/';
+		var link = document.getElementById('ruopenray-link');
+		var button = document.getElementById('ruopenray-open');
+
+		if (link) {
+			link.href = url;
+			link.textContent = url;
+		}
+
+		if (button)
+			button.href = url;
+	})();
+</script>
+
+{% include('footer') %}

@@ -1,0 +1,18 @@
+{
+  "name": "ruopenray-keenetic",
+  "version": "0.3.6",
+  "description": "RuOpenRay UI edition for Keenetic and Entware Xray management",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node tools/dev-server/index.js",
+    "dev": "node tools/dev-server/index.js",
+    "scan:private": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/scan-private.ps1",
+    "test:frontend": "node tests/routing-groups.test.mjs && node tests/frontend-smoke.mjs && node tests/frontend-app-boot.mjs",
+    "test:router": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/router-regression.ps1",
+    "test:router:quick": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/router-regression.ps1 -SkipTransparent"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

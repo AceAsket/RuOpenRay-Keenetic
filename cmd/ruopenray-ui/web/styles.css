@@ -1,0 +1,8 @@
+@import url('./styles/01-base-layout.css');
+@import url('./styles/02-dashboard.css');
+@import url('./styles/03-settings-core-modal.css');
+@import url('./styles/04-routing-forms.css');
+@import url('./styles/05-routing-balancers.css');
+@import url('./styles/06-servers-sni-geo.css');
+@import url('./styles/07-logs-domains-dns-devices.css');
+@import url('./styles/08-light-theme.css');
