@@ -40,7 +40,7 @@ func (s *serverState) diagnostics() map[string]any {
 			"activeConfig": s.cfg.ActiveConfig,
 		},
 		"system":   s.systemMetrics(),
-		"core":     runTimeout(5*time.Second, "xray", "version"),
+		"core":     runTimeout(5*time.Second, s.xrayBinary(), "version"),
 		"config":   map[string]any{"readError": errString(cfgErr), "test": test, "analysis": analysis},
 		"geo":      s.geoStatus(),
 		"firewall": map[string]any{"nft": runTimeout(5*time.Second, "nft", "list", "ruleset"), "iptables": runTimeout(5*time.Second, "iptables-save")},

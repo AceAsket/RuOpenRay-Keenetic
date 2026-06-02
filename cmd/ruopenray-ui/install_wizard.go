@@ -21,7 +21,7 @@ func (s *serverState) installPlan() map[string]any {
 		tproxyManager = "keenetic"
 	}
 	tproxyModules := tproxyModuleStatus(tproxyManager)
-	coreVersion := runTimeout(5*time.Second, "xray", "version")
+	coreVersion := runTimeout(5*time.Second, s.xrayBinary(), "version")
 	geo := s.geoStatus()
 	geoip := mapValue(geo["geoip"])
 	geosite := mapValue(geo["geosite"])

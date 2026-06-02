@@ -52,8 +52,21 @@ func (s *serverState) xrayEnv() []string {
 	return env
 }
 
+func (s *serverState) xrayBinary() string {
+	configured := strings.TrimSpace(s.cfg.xrayBinaryPath())
+	if configured != "" {
+		if info, err := os.Stat(configured); err == nil && !info.IsDir() {
+			return configured
+		}
+	}
+	if found, err := exec.LookPath("xray"); err == nil {
+		return found
+	}
+	return firstNonEmpty(configured, "xray")
+}
+
 func (s *serverState) runXray(args ...string) map[string]any {
-	cmd := exec.Command("xray", args...)
+	cmd := exec.Command(s.xrayBinary(), args...)
 	cmd.Env = s.xrayEnv()
 	out, err := cmd.CombinedOutput()
 	stdout := strings.TrimSpace(string(out))

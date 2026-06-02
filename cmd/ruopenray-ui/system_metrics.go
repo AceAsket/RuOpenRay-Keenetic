@@ -176,7 +176,7 @@ func (s *serverState) queryXrayStats(server string, reset bool) map[string]any {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, "xray", args...)
+	cmd := exec.CommandContext(ctx, s.xrayBinary(), args...)
 	cmd.Env = s.xrayEnv()
 	out, err := cmd.CombinedOutput()
 	stdout := strings.TrimSpace(string(out))

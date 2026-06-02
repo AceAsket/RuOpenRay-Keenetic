@@ -114,7 +114,7 @@ All operational commands print JSON. The web service is the default when no comm
 		printJSON(map[string]any{"ok": true, "version": appVersion, "asset": ruOpenRayAssetName(), "arch": systemArchitecture("github-release")})
 		return 0
 	case "status":
-		printJSON(map[string]any{"ok": true, "service": s.xrayServiceStatus(), "core": runTimeout(5*time.Second, "xray", "version"), "system": s.systemMetrics(), "app": map[string]any{"version": appVersion, "asset": ruOpenRayAssetName()}})
+		printJSON(map[string]any{"ok": true, "service": s.xrayServiceStatus(), "core": runTimeout(5*time.Second, s.xrayBinary(), "version"), "system": s.systemMetrics(), "app": map[string]any{"version": appVersion, "asset": ruOpenRayAssetName()}})
 		return 0
 	case "diagnostics", "diag":
 		printJSON(s.diagnostics())

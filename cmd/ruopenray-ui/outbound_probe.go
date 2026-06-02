@@ -55,7 +55,7 @@ func (s *serverState) httpOutboundProbe(outbound map[string]any, probeURL string
 	totalSamples := samples + 1
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeoutMs*(totalSamples+2))*time.Millisecond+5*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, "xray", "run", "-config", path)
+	cmd := exec.CommandContext(ctx, s.xrayBinary(), "run", "-config", path)
 	cmd.Env = s.xrayEnv()
 	var stderr bytes.Buffer
 	cmd.Stdout = &stderr
@@ -175,7 +175,7 @@ func (s *serverState) httpOutboundReadProbe(outbound map[string]any, probeURL st
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeoutMs*3)*time.Millisecond+5*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, "xray", "run", "-config", path)
+	cmd := exec.CommandContext(ctx, s.xrayBinary(), "run", "-config", path)
 	cmd.Env = s.xrayEnv()
 	var stderr bytes.Buffer
 	cmd.Stdout = &stderr
@@ -273,7 +273,7 @@ func (s *serverState) withOutboundHTTPProbeClient(outbound map[string]any, timeo
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeoutMs*5)*time.Millisecond+8*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, "xray", "run", "-config", path)
+	cmd := exec.CommandContext(ctx, s.xrayBinary(), "run", "-config", path)
 	cmd.Env = s.xrayEnv()
 	var stderr bytes.Buffer
 	cmd.Stdout = &stderr
@@ -379,7 +379,7 @@ func (s *serverState) tcpOutboundProbe(outbound map[string]any, host string, tar
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeoutMs*(attempts+2))*time.Millisecond+5*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, "xray", "run", "-config", path)
+	cmd := exec.CommandContext(ctx, s.xrayBinary(), "run", "-config", path)
 	cmd.Env = s.xrayEnv()
 	var stderr bytes.Buffer
 	cmd.Stdout = &stderr
