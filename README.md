@@ -1,34 +1,33 @@
 # RuOpenRay Keenetic
 
-RuOpenRay Keenetic — отдельная редакция RuOpenRay UI для роутеров Keenetic с Entware. Автор и владелец проекта: AceAsket.
+RuOpenRay Keenetic — редакция RuOpenRay UI для роутеров Keenetic с Entware.
 
-Репозиторий намеренно вынесен отдельно от `AceAsket/RuOpenRay`: у Keenetic другая модель запуска, другая файловая структура, другие сервисные скрипты и отдельная логика firewall/DNS. Так можно быстро адаптировать панель под Keenetic, не превращая основную OpenWrt-версию в набор условных веток.
+Автор и владелец проекта: AceAsket.
 
 Репозиторий: <https://github.com/AceAsket/RuOpenRay-Keenetic>
 
-## Статус
+## Возможности
 
-Это ранняя Keenetic-адаптация RuOpenRay UI. Базовый слой уже есть: Entware-установщик, дефолтные пути `/opt`, init-скрипты для панели и Xray, сборка только `linux/arm64`, установка Xray-core из релизов GitHub через веб-панель.
+- веб-панель RuOpenRay UI для Keenetic/Entware
+- установка панели в `/opt`
+- запуск через `/opt/etc/init.d/S99ruopenray-ui`
+- установка Xray-core из GitHub releases через веб-панель
+- запуск Xray через `/opt/etc/init.d/S99ruopenray-xray`
+- сборка release asset `ruopenray-ui-linux-arm64`
+- ссылка из панели в Keenetic Web UI
 
-OpenWrt-only действия для DNS/firewall на Keenetic пока не считаются готовой интеграцией. Их нужно заменить отдельным адаптером KeeneticOS.
-
-Текущий тестовый стенд:
+## Требования
 
 ```text
-Keenetic WBR3000UAX (KN-4110)
-KeeneticOS 5.0.11
-CPU architecture: aarch64
-OPKG component: installed
-OPKG disk: storage:/
+KeeneticOS
+Entware
+OPKG disk
+aarch64 / linux arm64
 ```
 
-Целевой release asset: `ruopenray-ui-linux-arm64`.
+Штатный SSH Keenetic открывает CLI KeeneticOS. Для установки нужен Entware shell с доступом к `/opt`, `opkg` и `/opt/etc/init.d/`.
 
-Штатный SSH Keenetic открывает CLI KeeneticOS, а не shell Entware. Для установки на роутере сначала нужен Entware, чтобы были доступны `/opt`, `opkg` и `/opt/etc/init.d/`.
-
-## Пути Keenetic
-
-Редакция для Keenetic использует Entware layout:
+## Пути
 
 ```text
 /opt/sbin/ruopenray-ui
@@ -41,11 +40,9 @@ OPKG disk: storage:/
 /opt/var/log/ruopenray-ui/
 ```
 
-Первая цель проекта — веб-панель, которая управляет конфигурацией Xray, профилями, подписками, geo-файлами, логами и рестартами через сервисные скрипты Keenetic/Entware.
+## Установка
 
-## Установка на Keenetic
-
-Команду нужно запускать в Entware shell на роутере:
+Запуск в Entware shell:
 
 ```sh
 sh -c "$(curl -fsSL https://raw.githubusercontent.com/AceAsket/RuOpenRay-Keenetic/main/scripts/install-keenetic.sh)"
@@ -57,13 +54,13 @@ sh -c "$(curl -fsSL https://raw.githubusercontent.com/AceAsket/RuOpenRay-Keeneti
 sh -c "$(wget -O - https://raw.githubusercontent.com/AceAsket/RuOpenRay-Keenetic/main/scripts/install-keenetic.sh)"
 ```
 
-Пароль панели можно задать явно:
+Пароль панели:
 
 ```sh
 RUOPENRAY_PASSWORD='change-me' sh -c "$(curl -fsSL https://raw.githubusercontent.com/AceAsket/RuOpenRay-Keenetic/main/scripts/install-keenetic.sh)"
 ```
 
-Панель запускается по адресу:
+Адрес панели:
 
 ```text
 http://192.168.1.1:9090/
@@ -77,49 +74,62 @@ http://192.168.1.1:9090/
 /opt/etc/init.d/S99ruopenray-xray
 ```
 
-Установщик панели скачивает `ruopenray-ui-linux-arm64` из последнего GitHub release. Если нужен свой бинарник, передайте URL вручную:
+Свой бинарник панели:
 
 ```sh
 RUOPENRAY_BINARY_URL='https://example.com/ruopenray-ui-linux-arm64' sh -c "$(wget -O - https://raw.githubusercontent.com/AceAsket/RuOpenRay-Keenetic/main/scripts/install-keenetic.sh)"
 ```
 
-Xray-core ставится из самой веб-панели: выберите релиз GitHub, после чего backend скачает подходящий `linux/arm64` архив и положит бинарник в `/opt/sbin/xray`. Установка Xray через `opkg` на Keenetic в этой редакции не используется.
+## Xray-core
 
-## Интеграция с Keenetic UI
+Xray-core устанавливается из веб-панели. Выберите релиз GitHub, после чего backend скачает подходящий `linux/arm64` архив и положит бинарник в `/opt/sbin/xray`.
 
-В панели добавлена быстрая ссылка `Keenetic`, которая открывает родной веб-интерфейс роутера `http://192.168.1.1/` в новой вкладке. Это безопасная интеграция без патча внутреннего веба KeeneticOS.
+Установка Xray через `opkg` на Keenetic не используется.
 
-Для внешнего доступа лучше использовать штатный KeenDNS:
+## Keenetic UI
+
+В панели есть ссылка `Keenetic`, которая открывает родной веб-интерфейс роутера:
+
+```text
+http://192.168.1.1/
+```
+
+Для внешнего доступа можно использовать KeenDNS:
 
 ```text
 ruopenray.<ваш-домен>.keenetic.pro -> 192.168.1.1:9090
 ```
 
-Рекомендуемый путь — создать в KeeneticOS отдельное веб-приложение или проброс через KeenDNS на порт панели `9090`. Встраивать RuOpenRay прямо в меню KeeneticOS или править файлы штатной панели пока не стоит: такой способ зависит от версии KeeneticOS и может сломаться после обновления.
+## Прозрачный режим
 
-## XKeen как референс
+Текущий стенд использует TCP REDIRECT для LAN:
 
-XKeen полезен как источник Keenetic-специфичных деталей, но RuOpenRay Keenetic не должен зависеть от XKeen для веб-панели. Основная цель — собственное веб-управление и аккуратная интеграция с KeeneticOS/Entware.
+```text
+/opt/etc/ndm/netfilter.d/90-ruopenray-redirect.sh
+/opt/etc/ruopenray-ui/disable-keenetic-redirect.sh
+```
 
-Что стоит изучать при реализации Keenetic-адаптера:
+REDIRECT направляет TCP `80/443` с LAN-интерфейса `br0` в Xray inbound `transparent_ipv4` на порт `52345`.
 
-- `/opt/etc/init.d/S99xkeen`
-- `/opt/etc/ndm/netfilter.d/proxy.sh`
-- `iptables` и `ip6tables`
-- TProxy, Redirect и Mixed modes
-- policy marks Keenetic
-- внешние списки в `/opt/etc/xkeen/`
+Откат:
 
-Сначала RuOpenRay Keenetic должен стать рабочей веб-панелью управления, затем можно добавлять собственные безопасные адаптеры для firewall, DNS, политик и сервисов.
+```sh
+/opt/etc/ruopenray-ui/disable-keenetic-redirect.sh
+```
 
-## Ближайший план
+## Проверка
 
-1. Добавить адаптер KeeneticOS для firewall/DNS.
-2. Добавить веб-управление политиками Keenetic и хуками `/opt/etc/ndm/netfilter.d/`.
-3. Довести установку Xray-core для `/opt/sbin/xray`.
-4. Добавить smoke-тесты против реального Keenetic-стенда.
-5. Скрыть или отключить OpenWrt-only DNS/firewall действия до появления Keenetic-адаптеров.
-6. Добавить проверки Entware, `opkg`, `iptables`, `ndm` hooks и файлов XKeen.
+```sh
+/opt/etc/init.d/S99ruopenray-ui status
+/opt/etc/init.d/S99ruopenray-xray status
+/opt/sbin/xray run -test -config /opt/etc/xray/configs/99_ruopenray.json
+```
+
+Проверка выхода через локальный SOCKS:
+
+```sh
+curl -4 --socks5-hostname 127.0.0.1:10808 https://api.ipify.org
+```
 
 ## Локальная разработка
 
@@ -133,7 +143,7 @@ go test ./...
 npm run test:frontend
 ```
 
-## Идентичность репозитория
+## Репозиторий
 
 Go module:
 
