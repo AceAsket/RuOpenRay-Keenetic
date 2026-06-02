@@ -170,7 +170,7 @@ export function createSettingsActions({
     state.leases = result.leases || [];
     state.leasesSource = result.source || '';
     state.message = state.leases.length
-      ? `DHCP leases обновлены: ${state.leases.length}`
+      ? `DHCP leases обновлены: ${state.leases.length} · ${state.leasesSource || 'KeeneticOS'}`
       : 'DHCP leases пока не найдены';
     render();
   }

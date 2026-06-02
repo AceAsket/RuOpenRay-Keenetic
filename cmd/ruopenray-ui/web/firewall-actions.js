@@ -74,6 +74,26 @@ export function createFirewallActions({
     }
   }
 
+  async function repairFirewall() {
+    state.firewallSaving = true;
+    state.busyAction = 'repairFirewall';
+    state.busyLabel = 'Восстанавливаю TPROXY';
+    render();
+    try {
+      const result = await request('/api/firewall/repair', { method: 'POST' });
+      state.firewallStatus = result.status || result;
+      state.message = result.ok
+        ? (result.changed === false ? 'TPROXY не требует восстановления' : 'TPROXY восстановлен')
+        : (result.error || 'Не удалось восстановить TPROXY');
+      return result;
+    } finally {
+      state.firewallSaving = false;
+      if (state.busyAction === 'repairFirewall') state.busyAction = '';
+      state.busyLabel = '';
+      render();
+    }
+  }
+
   async function refreshFirewallStatus() {
     state.busyAction = 'refreshFirewallStatus';
     render();
@@ -226,6 +246,7 @@ export function createFirewallActions({
     applyFirewallWithRetry,
     applyFirewall,
     disableFirewall,
+    repairFirewall,
     refreshFirewallStatus,
     downloadFirewallRules,
     setFirewallBypassMode,

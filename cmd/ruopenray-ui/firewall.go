@@ -603,6 +603,22 @@ func (s *serverState) applyFirewall(payload map[string]any) map[string]any {
 	return map[string]any{"ok": ok, "nft": body, "meta": meta, "geoExpansion": payload["geoExpansion"], "steps": steps, "status": status}
 }
 
+func (s *serverState) repairFirewall() map[string]any {
+	status := s.firewallStatus()
+	if fmt.Sprint(status["routerMode"]) != "tproxy" {
+		return map[string]any{"ok": true, "changed": false, "status": status, "stdout": "TPROXY repair is not needed outside TPROXY mode"}
+	}
+	if s.cfg.isKeenetic() {
+		result := s.applyKeeneticFirewall(status)
+		result["repair"] = true
+		return result
+	}
+	steps := applyTProxyPolicyRouting(true)
+	repaired := s.firewallStatus()
+	ok := rfw.AllStepsOK(steps) && repaired["ipRule"] == true && repaired["ipRoute"] == true
+	return map[string]any{"ok": ok, "changed": true, "steps": steps, "status": repaired, "repair": true}
+}
+
 func (s *serverState) restoreFirewallSnapshot(payload map[string]any) map[string]any {
 	if s.cfg.isKeenetic() {
 		rawSnapshot := payload

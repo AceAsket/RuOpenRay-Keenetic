@@ -577,11 +577,15 @@ function firewallPanel() {
           <span><strong>Перехватывать DNS</strong><em>UDP/TCP 53 отправляется в Xray DNS, даже если основные порты только 80/443.</em></span>
         </label>
       </div>
+      <div class="route-lease-head compact">
+        <span>${state.leases.length ? `${state.leases.length} DHCP leases · ${escapeHtml(state.leasesSource || 'KeeneticOS')}` : 'DHCP leases пока не найдены'}</span>
+        <button class="btn secondary" type="button" data-action="refreshDhcpLeases" ${state.firewallSaving ? 'disabled' : ''}>Обновить DHCP</button>
+      </div>
       <div class="firewall-device-list">
         ${deviceChoices.length ? deviceChoices.slice(0, 16).map((device) => `<label class="firewall-device ${selectedDevices.has(device.ip) ? 'active' : ''}">
           <input type="checkbox" data-firewall-device="${escapeHtml(device.ip)}" ${selectedDevices.has(device.ip) ? 'checked' : ''} />
           <span><strong>${escapeHtml(device.name || device.ip)}</strong><em>${escapeHtml([device.ip, device.mac].filter(Boolean).join(' · '))}</em></span>
-        </label>`).join('') : '<p class="muted">DHCP leases пока не найдены. Устройства можно добавить в разделе LAN-устройств, после этого они появятся здесь.</p>'}
+        </label>`).join('') : '<p class="muted">DHCP leases не найдены. Проверьте, что в KeeneticOS есть активные DHCP-клиенты, или введите IP вручную в правиле маршрутизации.</p>'}
       </div>
     </section>
 
@@ -1094,6 +1098,7 @@ function firewallApplyPanel() {
         <div><h2>Применение</h2><span>${isKeenetic ? 'Сохраняет Keenetic hook и применяет iptables-цепочки; для TPROXY также восстанавливает table 111.' : 'Сохраняет nftables и, для TPROXY, policy routing после перезапуска firewall.'}</span></div>
         <div class="split-actions">
           <button class="btn secondary" data-action="refreshFirewallStatus" ${state.firewallSaving ? 'disabled' : ''}>Обновить</button>
+          ${isKeenetic || status.routerMode === 'tproxy' ? `<button class="btn secondary ${state.busyAction === 'repairFirewall' ? 'is-busy' : ''}" data-action="repairFirewall" ${state.firewallSaving || status.routerMode !== 'tproxy' ? 'disabled' : ''}>${state.busyAction === 'repairFirewall' ? 'Восстанавливаю...' : 'Восстановить TPROXY'}</button>` : ''}
           <button class="btn secondary" data-action="downloadFirewallRules" ${state.firewallSaving ? 'disabled' : ''}>Скачать правила</button>
           <button class="btn warning ${state.firewallSaving || state.configApplying ? 'is-busy' : ''}" data-action="apply" ${state.firewallSaving || state.configApplying || !available || blockedBySafety ? 'disabled' : ''}>${state.firewallSaving || state.configApplying ? 'Применяю изменения...' : 'Применить изменения'}</button>
           <button class="btn secondary" data-action="disableFirewall" ${state.firewallSaving || (!active && !persistent) ? 'disabled' : ''}>Отключить</button>

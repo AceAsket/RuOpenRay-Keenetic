@@ -120,6 +120,8 @@ ruopenray.<ваш-домен>.keenetic.pro -> 192.168.1.1:9090
 - IP exclude для firewall hook
 - дополнительные proxy-порты
 - порты-исключения
+- обновление DHCP leases из KeeneticOS
+- восстановление TPROXY policy routing
 
 Сохраненные списки применяются при preview/apply firewall и попадают в Keenetic hook.
 
@@ -199,8 +201,7 @@ curl -4 --socks5-hostname 127.0.0.1:10808 https://api.ipify.org
 
 ## План
 
-- подключить чтение DHCP leases KeeneticOS для списка LAN-устройств
-- добавить UI для проверки и восстановления TPROXY modules, ip rule и route table 111
+- добавить UI для проверки TPROXY modules перед применением
 - включить управление IPv6 hook из настроек Keenetic
 - подключить Entware proxy и download retries к загрузчикам Xray, geo и обновлений
 - добавить watchdog deleted FD и лимитов Xray
