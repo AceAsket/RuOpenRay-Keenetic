@@ -21,14 +21,17 @@ func (s *serverState) diagnostics() map[string]any {
 			"version": appVersion,
 			"asset":   ruOpenRayAssetName(),
 			"binary":  os.Args[0],
+			"platform": s.cfg.Platform,
 		},
-		"openwrt": map[string]any{
+		"router": map[string]any{
+			"platform": s.cfg.Platform,
 			"release": firstLine(readFileString("/etc/openwrt_release"), ""),
+			"keenetic": firstLine(readFileString("/etc/ndm/firmware"), ""),
 			"manager": firstNonEmpty(commandName("apk"), commandName("opkg"), "не найден"),
 		},
 		"service": map[string]any{
-			"ruopenray": runTimeout(5*time.Second, "/etc/init.d/ruopenray-ui", "status"),
-			"xray":      runTimeout(5*time.Second, "/etc/init.d/"+s.cfg.ServiceName, "status"),
+			"ruopenray": runTimeout(5*time.Second, s.cfg.appServiceScript(), "status"),
+			"xray":      runTimeout(5*time.Second, s.cfg.serviceScript(s.cfg.ServiceName), "status"),
 		},
 		"paths": map[string]any{
 			"dataDir":      s.cfg.DataDir,

@@ -68,7 +68,7 @@ func (s *serverState) installGeoCron(schedule map[string]any) map[string]any {
 		return map[string]any{"ok": true, "stdout": "dev-mode: расписание сохранено без установки cron"}
 	}
 	const marker = "# RuOpenRay geo update"
-	rootCrontab := "/etc/crontabs/root"
+	rootCrontab := s.cfg.crontabPath()
 	body, _ := os.ReadFile(rootCrontab)
 	var lines []string
 	for _, line := range strings.Split(string(body), "\n") {
@@ -86,19 +86,20 @@ func (s *serverState) installGeoCron(schedule map[string]any) map[string]any {
 		}
 		binary := os.Args[0]
 		if !filepath.IsAbs(binary) {
-			binary = "/usr/bin/ruopenray-ui"
+			binary = s.cfg.appBinaryPath()
 		}
-		env := fmt.Sprintf("RUOPENRAY_DATA_DIR=%s RUOPENRAY_GEO_DIR=%s RUOPENRAY_BACKUP_DIR=%s RUOPENRAY_XRAY_SERVICE=%s", geodata.ShellQuote(s.cfg.DataDir), geodata.ShellQuote(s.cfg.GeoDir), geodata.ShellQuote(s.cfg.BackupDir), geodata.ShellQuote(s.cfg.ServiceName))
+		env := fmt.Sprintf("RUOPENRAY_PLATFORM=%s RUOPENRAY_DATA_DIR=%s RUOPENRAY_GEO_DIR=%s RUOPENRAY_BACKUP_DIR=%s RUOPENRAY_XRAY_SERVICE=%s", geodata.ShellQuote(s.cfg.Platform), geodata.ShellQuote(s.cfg.DataDir), geodata.ShellQuote(s.cfg.GeoDir), geodata.ShellQuote(s.cfg.BackupDir), geodata.ShellQuote(s.cfg.ServiceName))
 		lines = append(lines, fmt.Sprintf("%d %d * * %s %s %s --geo-update-scheduled >/tmp/ruopenray-geo-update.log 2>&1 %s", minute, hour, dow, env, geodata.ShellQuote(binary), marker))
 	}
 	content := strings.Join(lines, "\n")
 	if strings.TrimSpace(content) != "" {
 		content += "\n"
 	}
+	_ = os.MkdirAll(filepath.Dir(rootCrontab), 0o755)
 	if err := os.WriteFile(rootCrontab, []byte(content), 0o600); err != nil {
 		return map[string]any{"ok": false, "stderr": err.Error()}
 	}
-	restart := exec.Command("/etc/init.d/cron", "restart").Run()
+	restart := exec.Command(s.cfg.cronServiceScript(), "restart").Run()
 	if restart != nil {
 		return map[string]any{"ok": true, "stdout": "cron-файл обновлен, но cron не удалось перезапустить: " + restart.Error()}
 	}

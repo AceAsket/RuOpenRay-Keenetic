@@ -28,6 +28,7 @@ func (s *serverState) status(w http.ResponseWriter) {
 			"version": appVersion,
 			"asset":   ruOpenRayAssetName(),
 			"arch":    systemArchitecture("github-release"),
+			"platform": s.cfg.Platform,
 		},
 		"service": service,
 		"core": map[string]any{
@@ -93,15 +94,16 @@ func (s *serverState) xrayServiceStatus() map[string]any {
 	if runtime.GOOS == "windows" {
 		return map[string]any{"running": true, "detail": "dev-mode: имитация сервиса"}
 	}
-	result := run("/etc/init.d/"+s.cfg.ServiceName, "status")
+	serviceScript := s.cfg.serviceScript(s.cfg.ServiceName)
+	result := run(serviceScript, "status")
 	text := result["stdout"].(string) + " " + result["stderr"].(string)
 	normalized := strings.ToLower(text)
 	managed := result["ok"].(bool) && !strings.Contains(normalized, "no instances") && regexp.MustCompile(`(?i)running|active`).MatchString(text)
-	uptime, pid := rsystem.ProcessUptimeSeconds(s.cfg.ServiceName)
+	uptime, pid := rsystem.ProcessUptimeSeconds(s.cfg.coreProcessName())
 	processRunning := uptime > 0
 	running := managed || processRunning
 	detail := strings.TrimSpace(text)
-	service := map[string]any{"running": running, "managed": managed, "external": processRunning && !managed, "detail": detail}
+	service := map[string]any{"running": running, "managed": managed, "external": processRunning && !managed, "detail": detail, "script": serviceScript}
 	if processRunning {
 		service["uptime"] = uptime
 		service["pid"] = pid

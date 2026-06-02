@@ -26,7 +26,7 @@ func (s *serverState) installPlan() map[string]any {
 	xrayInstalled := coreVersion["ok"] == true
 	geoInstalled := geoip["exists"] == true && geosite["exists"] == true
 	panelSize := fileSizeOrZero(os.Args[0])
-	xraySize := fileSizeOrZero("/usr/bin/xray")
+	xraySize := fileSizeOrZero(s.cfg.xrayBinaryPath())
 	geoCurrent := numberAny(geoip["size"]) + numberAny(geosite["size"])
 	backupCurrent := dirSizeOrZero(s.cfg.BackupDir)
 	xrayNeeded := int64(30 * 1024 * 1024)
@@ -61,7 +61,7 @@ func (s *serverState) installPlan() map[string]any {
 		{"id": "geo", "title": "Geo-файлы", "ok": geoip["exists"] == true && geosite["exists"] == true, "detail": fmt.Sprintf("geoip.dat: %v · geosite.dat: %v", geoip["exists"], geosite["exists"])},
 		{"id": "tproxy", "title": "TPROXY-модули", "ok": tproxyModules["ok"], "detail": tproxyModules["detail"]},
 		{"id": "nand", "title": "Экономия места", "ok": storage["leanOk"], "detail": fmt.Sprintf("экономный режим: %s, полный geo: %s", byteCount(leanRequired), byteCount(fullRequired))},
-		{"id": "service", "title": "Сервис", "ok": true, "detail": "/etc/init.d/" + s.cfg.ServiceName},
+		{"id": "service", "title": "Сервис", "ok": true, "detail": s.cfg.serviceScript(s.cfg.ServiceName)},
 	}
 	return map[string]any{
 		"ok":             true,

@@ -155,6 +155,9 @@ func (s *serverState) controlDomainMonitor(payload map[string]any) map[string]an
 }
 
 func (s *serverState) setDnsmasqLogqueries(enabled bool) map[string]any {
+	if s.cfg.isKeenetic() {
+		return map[string]any{"ok": false, "stderr": "KeeneticOS DNS logging adapter пока не реализован", "status": s.domainMonitorRuntime(), "dnsmasq": s.dnsmasqMonitorInfo()}
+	}
 	if runtime.GOOS == "windows" {
 		return map[string]any{"ok": false, "stderr": "Настройка dnsmasq доступна только на роутере", "status": s.domainMonitorRuntime(), "dnsmasq": s.dnsmasqMonitorInfo()}
 	}

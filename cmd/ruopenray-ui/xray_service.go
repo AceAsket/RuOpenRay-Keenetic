@@ -91,10 +91,19 @@ func (s *serverState) serviceAction(action string) map[string]any {
 		}
 	}
 	delay := s.waitBeforeXrayAction(action)
+	serviceScript := s.cfg.serviceScript(s.cfg.ServiceName)
 	if runtime.GOOS == "windows" {
 		return map[string]any{"ok": true, "stdout": "dev-mode: был бы выполнен сервис " + s.cfg.ServiceName + " " + action, "logMaintenance": logMaintenance, "delay": delay}
 	}
-	result := run("/etc/init.d/"+s.cfg.ServiceName, action)
+	if s.cfg.isKeenetic() && (action == "enable" || action == "disable") {
+		result := map[string]any{"ok": true, "stdout": "Entware init.d включает сервис наличием исполняемого S-скрипта", "service": serviceScript}
+		if logMaintenance != nil {
+			result["logMaintenance"] = logMaintenance
+		}
+		return result
+	}
+	result := run(serviceScript, action)
+	result["service"] = serviceScript
 	if logMaintenance != nil {
 		result["logMaintenance"] = logMaintenance
 	}
@@ -116,6 +125,13 @@ func (s *serverState) serviceAction(action string) map[string]any {
 func (s *serverState) enableXrayServiceConfig() map[string]any {
 	if runtime.GOOS == "windows" {
 		return map[string]any{"ok": true, "stdout": "dev-mode: enable xray service config"}
+	}
+	if s.cfg.isKeenetic() {
+		serviceScript := s.cfg.serviceScript(s.cfg.ServiceName)
+		if _, err := os.Stat(serviceScript); err != nil {
+			return map[string]any{"ok": false, "stderr": "init-скрипт Xray не найден: " + serviceScript}
+		}
+		return map[string]any{"ok": true, "stdout": "Keenetic/Entware Xray service готов: " + serviceScript, "service": serviceScript}
 	}
 	steps := []map[string]any{}
 	if commandExists("uci") {

@@ -229,7 +229,7 @@ func (s *serverState) installCoreRelease(version string, keepBackup bool) map[st
 	if len(binary) == 0 {
 		return map[string]any{"ok": false, "stderr": "в архиве не найден бинарник xray"}
 	}
-	target := "/usr/bin/xray"
+	target := s.cfg.xrayBinaryPath()
 	current, _ := os.ReadFile(target)
 	backup := ""
 	if keepBackup && len(current) > 0 {
@@ -271,6 +271,15 @@ func (s *serverState) updateCore(version string, keepBackup bool) map[string]any
 			"before":         before,
 			"after":          before,
 			"stdout":         "dev-mode: на OpenWrt будет выполнено обновление пакета xray-core",
+		}
+	}
+	if s.cfg.isKeenetic() {
+		return map[string]any{
+			"ok": false,
+			"packageManager": "opkg",
+			"before": before,
+			"stderr": "На Keenetic установка Xray через opkg пока не используется. Выберите версию Xray-core из релизов GitHub.",
+			"arch": systemArchitecture("opkg"),
 		}
 	}
 

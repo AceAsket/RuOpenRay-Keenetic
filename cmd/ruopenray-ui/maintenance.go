@@ -54,8 +54,14 @@ func (s *serverState) backupBundle() (string, error) {
 		return err
 	}
 	_ = addFile("xray/config.json", s.cfg.ActiveConfig)
-	_ = addFile("uci/ruopenray-ui", "/etc/config/ruopenray-ui")
-	_ = addFile("service/ruopenray-ui.init", "/etc/init.d/ruopenray-ui")
+	if s.cfg.isKeenetic() {
+		_ = addFile("service/ruopenray-ui.env", filepath.Join(s.cfg.DataDir, "ruopenray-ui.env"))
+		_ = addFile("service/S99ruopenray-ui", s.cfg.appServiceScript())
+		_ = addFile("service/S99ruopenray-xray", s.cfg.serviceScript(s.cfg.ServiceName))
+	} else {
+		_ = addFile("uci/ruopenray-ui", "/etc/config/ruopenray-ui")
+		_ = addFile("service/ruopenray-ui.init", "/etc/init.d/ruopenray-ui")
+	}
 	if info, err := os.Stat(s.cfg.DataDir); err == nil && info.IsDir() {
 		err = filepath.WalkDir(s.cfg.DataDir, func(path string, entry fs.DirEntry, walkErr error) error {
 			if walkErr != nil {
@@ -177,19 +183,16 @@ All operational commands print JSON. The web service is the default when no comm
 func (s *serverState) uninstallApp(purge bool) map[string]any {
 	steps := []map[string]any{}
 	if runtime.GOOS != "windows" {
-		if _, err := os.Stat("/etc/init.d/" + appServiceName); err == nil {
-			steps = append(steps, run("/etc/init.d/"+appServiceName, "disable"))
-			steps = append(steps, run("/etc/init.d/"+appServiceName, "stop"))
+		appScript := s.cfg.appServiceScript()
+		if _, err := os.Stat(appScript); err == nil {
+			if !s.cfg.isKeenetic() {
+				steps = append(steps, run(appScript, "disable"))
+			}
+			steps = append(steps, run(appScript, "stop"))
 		}
 	}
 	_ = s.removeGeoCron()
-	paths := []string{
-		"/etc/init.d/" + appServiceName,
-		"/etc/config/ruopenray-ui",
-		"/usr/share/luci/menu.d/luci-app-ruopenray.json",
-		"/usr/share/rpcd/acl.d/luci-app-ruopenray.json",
-		"/usr/share/ucode/luci/template/ruopenray",
-	}
+	paths := s.uninstallPaths()
 	for _, item := range paths {
 		if err := os.RemoveAll(item); err != nil && !os.IsNotExist(err) {
 			steps = append(steps, map[string]any{"ok": false, "command": "remove " + item, "stderr": err.Error()})
@@ -226,11 +229,29 @@ func (s *serverState) uninstallApp(purge bool) map[string]any {
 	return map[string]any{"ok": ok, "purge": purge, "steps": steps}
 }
 
+func (s *serverState) uninstallPaths() []string {
+	if s.cfg.isKeenetic() {
+		return []string{
+			s.cfg.appServiceScript(),
+			"/opt/etc/init.d/S99ruopenray-xray",
+			"/opt/sbin/ruopenray-ui",
+			"/opt/etc/ruopenray-ui/ruopenray-ui.env",
+		}
+	}
+	return []string{
+		"/etc/init.d/" + appServiceName,
+		"/etc/config/ruopenray-ui",
+		"/usr/share/luci/menu.d/luci-app-ruopenray.json",
+		"/usr/share/rpcd/acl.d/luci-app-ruopenray.json",
+		"/usr/share/ucode/luci/template/ruopenray",
+	}
+}
+
 func (s *serverState) removeGeoCron() map[string]any {
 	if runtime.GOOS == "windows" {
 		return map[string]any{"ok": true, "stdout": "dev-mode"}
 	}
-	const rootCrontab = "/etc/crontabs/root"
+	rootCrontab := s.cfg.crontabPath()
 	body, err := os.ReadFile(rootCrontab)
 	if err != nil {
 		return map[string]any{"ok": true, "stdout": "crontab not found"}
@@ -242,7 +263,7 @@ func (s *serverState) removeGeoCron() map[string]any {
 	if err := os.WriteFile(rootCrontab, []byte(content), 0o600); err != nil {
 		return map[string]any{"ok": false, "stderr": err.Error()}
 	}
-	_ = exec.Command("/etc/init.d/cron", "restart").Run()
+	_ = exec.Command(s.cfg.cronServiceScript(), "restart").Run()
 	return map[string]any{"ok": true, "stdout": "geo cron removed"}
 }
 

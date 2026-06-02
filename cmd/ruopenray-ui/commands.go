@@ -70,3 +70,7 @@ func concatCommandOutput(items ...map[string]any) string {
 	}
 	return strings.Join(lines, "\n\n")
 }
+
+func singleQuote(value string) string {
+	return "'" + strings.ReplaceAll(value, "'", `'"'"'`) + "'"
+}

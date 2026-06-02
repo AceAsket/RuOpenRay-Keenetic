@@ -226,6 +226,9 @@ func dnsmasqServerList() []string {
 }
 
 func (s *serverState) applyLANDNSUpstream(payload map[string]any) map[string]any {
+	if s.cfg.isKeenetic() {
+		return map[string]any{"ok": false, "available": false, "error": "KeeneticOS DNS adapter пока не реализован; OpenWrt UCI/dnsmasq действия отключены"}
+	}
 	if runtime.GOOS == "windows" || !commandExists("uci") {
 		return map[string]any{"ok": false, "available": false, "error": "UCI недоступен на этой системе"}
 	}

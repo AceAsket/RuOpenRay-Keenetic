@@ -12,6 +12,7 @@ import (
 )
 
 type appConfig struct {
+	Platform     string
 	DataDir      string
 	ProfilesDir  string
 	BackupDir    string
@@ -82,11 +83,13 @@ func getenv(names []string, fallback string) string {
 }
 
 func loadAppConfig() appConfig {
+	platform := normalizePlatform(getenv([]string{"RUOPENRAY_PLATFORM", "OPENRAY_PLATFORM"}, detectPlatform()))
 	cfg := appConfig{
-		DataDir:      getenv([]string{"RUOPENRAY_DATA_DIR", "OPENRAY_DATA_DIR"}, "data"),
-		ServiceName:  getenv([]string{"RUOPENRAY_XRAY_SERVICE", "OPENRAY_XRAY_SERVICE"}, "xray"),
+		Platform:     platform,
+		DataDir:      getenv([]string{"RUOPENRAY_DATA_DIR", "OPENRAY_DATA_DIR"}, defaultDataDir(platform)),
+		ServiceName:  getenv([]string{"RUOPENRAY_XRAY_SERVICE", "OPENRAY_XRAY_SERVICE"}, defaultXrayService(platform)),
 		GeoDir:       getenv([]string{"RUOPENRAY_GEO_DIR", "OPENRAY_GEO_DIR"}, ""),
-		Host:         getenv([]string{"RUOPENRAY_HOST", "OPENRAY_HOST"}, "127.0.0.1"),
+		Host:         getenv([]string{"RUOPENRAY_HOST", "OPENRAY_HOST"}, defaultHost(platform)),
 		Port:         getenv([]string{"RUOPENRAY_PORT", "OPENRAY_PORT"}, "9090"),
 		Password:     getenv([]string{"RUOPENRAY_PASSWORD", "RUOPENRAY_TOKEN", "OPENRAY_PASSWORD", "OPENRAY_TOKEN"}, "admin"),
 		ActiveConfig: getenv([]string{"RUOPENRAY_ACTIVE_CONFIG", "OPENRAY_ACTIVE_CONFIG"}, ""),
@@ -94,7 +97,7 @@ func loadAppConfig() appConfig {
 		BackupDir:    getenv([]string{"RUOPENRAY_BACKUP_DIR", "OPENRAY_BACKUP_DIR"}, ""),
 	}
 	if cfg.ActiveConfig == "" {
-		cfg.ActiveConfig = filepath.Join(cfg.DataDir, "config.json")
+		cfg.ActiveConfig = defaultActiveConfig(platform, cfg.DataDir)
 	}
 	if cfg.ProfilesDir == "" {
 		cfg.ProfilesDir = filepath.Join(cfg.DataDir, "profiles")
@@ -103,18 +106,133 @@ func loadAppConfig() appConfig {
 		cfg.BackupDir = filepath.Join(cfg.DataDir, "backups")
 	}
 	if cfg.GeoDir == "" {
-		cfg.GeoDir = defaultGeoDir()
+		cfg.GeoDir = defaultGeoDir(platform)
 	}
 	return cfg
 }
 
-func defaultGeoDir() string {
-	for _, candidate := range []string{"/usr/share/xray", "/usr/local/share/xray"} {
+func normalizePlatform(value string) string {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case "keenetic", "entware":
+		return "keenetic"
+	case "openwrt":
+		return "openwrt"
+	default:
+		return "generic"
+	}
+}
+
+func detectPlatform() string {
+	if _, err := os.Stat("/etc/openwrt_release"); err == nil {
+		return "openwrt"
+	}
+	if _, err := os.Stat("/opt/etc/ndm"); err == nil {
+		return "keenetic"
+	}
+	if _, err := os.Stat("/opt/etc/init.d"); err == nil && commandExists("opkg") {
+		return "keenetic"
+	}
+	return "generic"
+}
+
+func defaultHost(platform string) string {
+	if platform == "keenetic" || platform == "openwrt" {
+		return "0.0.0.0"
+	}
+	return "127.0.0.1"
+}
+
+func defaultDataDir(platform string) string {
+	if platform == "keenetic" {
+		return "/opt/etc/ruopenray-ui"
+	}
+	if platform == "openwrt" {
+		return "/etc/ruopenray-ui"
+	}
+	return "data"
+}
+
+func defaultActiveConfig(platform, dataDir string) string {
+	if platform == "keenetic" {
+		return "/opt/etc/xray/configs/99_ruopenray.json"
+	}
+	return filepath.Join(dataDir, "config.json")
+}
+
+func defaultXrayService(platform string) string {
+	if platform == "keenetic" {
+		return "S99ruopenray-xray"
+	}
+	return "xray"
+}
+
+func defaultGeoDir(platform string) string {
+	candidates := []string{"/usr/share/xray", "/usr/local/share/xray"}
+	if platform == "keenetic" {
+		candidates = []string{"/opt/etc/xray/dat", "/opt/share/xray", "/opt/usr/share/xray"}
+	}
+	for _, candidate := range candidates {
 		if info, err := os.Stat(candidate); err == nil && info.IsDir() {
 			return candidate
 		}
 	}
+	if platform == "keenetic" {
+		return "/opt/etc/xray/dat"
+	}
 	return "/usr/share/xray"
+}
+
+func (cfg appConfig) isKeenetic() bool {
+	return cfg.Platform == "keenetic"
+}
+
+func (cfg appConfig) serviceScript(name string) string {
+	if filepath.IsAbs(name) {
+		return name
+	}
+	if cfg.isKeenetic() {
+		return filepath.Join("/opt/etc/init.d", name)
+	}
+	return filepath.Join("/etc/init.d", name)
+}
+
+func (cfg appConfig) appServiceScript() string {
+	if cfg.isKeenetic() {
+		return "/opt/etc/init.d/S99ruopenray-ui"
+	}
+	return "/etc/init.d/ruopenray-ui"
+}
+
+func (cfg appConfig) xrayBinaryPath() string {
+	if cfg.isKeenetic() {
+		return "/opt/sbin/xray"
+	}
+	return "/usr/bin/xray"
+}
+
+func (cfg appConfig) appBinaryPath() string {
+	if cfg.isKeenetic() {
+		return "/opt/sbin/ruopenray-ui"
+	}
+	return "/usr/bin/ruopenray-ui"
+}
+
+func (cfg appConfig) crontabPath() string {
+	if cfg.isKeenetic() {
+		return "/opt/var/spool/cron/crontabs/root"
+	}
+	return "/etc/crontabs/root"
+}
+
+func (cfg appConfig) cronServiceScript() string {
+	if cfg.isKeenetic() {
+		return "/opt/etc/init.d/S05crond"
+	}
+	return "/etc/init.d/cron"
+}
+
+func (cfg appConfig) coreProcessName() string {
+	return "xray"
 }
 
 func (s *serverState) ensureData() error {

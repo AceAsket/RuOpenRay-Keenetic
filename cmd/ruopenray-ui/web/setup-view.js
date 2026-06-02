@@ -96,9 +96,10 @@ function coreArchitectureText() {
 }
 
 function githubInstallCommand(withXray = false) {
-  const env = [`RUOPENRAY_PASSWORD=${shellQuote(state.installPassword || 'admin')}`];
+  const env = [];
+  if (state.installPassword) env.push(`RUOPENRAY_PASSWORD=${shellQuote(state.installPassword)}`);
   if (withXray) env.push('RUOPENRAY_INSTALL_XRAY=1');
-  return `${env.join(' ')} sh -c "$(wget -O - https://raw.githubusercontent.com/AceAsket/RuOpenRay-Keenetic/main/scripts/install-openwrt.sh)"`;
+  return `${env.length ? `${env.join(' ')} ` : ''}sh -c "$(wget -O - https://raw.githubusercontent.com/AceAsket/RuOpenRay-Keenetic/main/scripts/install-keenetic.sh)"`;
 }
 
 function setupWizardSteps(readiness) {

@@ -12,9 +12,21 @@ Repository: <https://github.com/AceAsket/RuOpenRay-Keenetic>
 
 ## Status
 
-Early porting baseline. The current source tree was split from RuOpenRay UI and still contains OpenWrt-oriented code paths. The Keenetic work will replace those paths with Entware/XKeen-compatible ones step by step.
+Early porting baseline. The current source tree was split from RuOpenRay UI and still contains OpenWrt-oriented code paths. The first Keenetic-native layer is now present: Entware installer, `/opt` defaults, and init scripts for the web UI and Xray.
 
-Do not run the OpenWrt installer from this repository on Keenetic yet.
+Do not use OpenWrt-only DNS/firewall actions on Keenetic yet. They will be replaced with a KeeneticOS adapter.
+
+Current test stand:
+
+```text
+Keenetic WBR3000UAX (KN-4110)
+KeeneticOS 5.0.11
+CPU architecture: aarch64
+OPKG component: installed
+OPKG disk: storage:/
+```
+
+The built-in Keenetic SSH service exposes the Keenetic CLI, not an Entware shell. Router-side installation requires Entware to be deployed first so that `/opt`, `opkg`, and `/opt/etc/init.d/` are available from a shell session.
 
 ## Target Layout
 
@@ -31,11 +43,53 @@ The Keenetic edition should use Entware paths:
 
 The first runtime target is a web UI that manages Xray configuration, profiles, subscriptions, geo files, logs, and restarts through Keenetic/Entware service scripts.
 
-## XKeen Integration
+## Install On Keenetic
 
-The first practical version should cooperate with XKeen instead of replacing its firewall logic immediately.
+Run in the Keenetic Entware shell:
 
-XKeen already handles the Keenetic-specific dangerous parts:
+```sh
+sh -c "$(curl -fsSL https://raw.githubusercontent.com/AceAsket/RuOpenRay-Keenetic/main/scripts/install-keenetic.sh)"
+```
+
+Or with `wget`:
+
+```sh
+sh -c "$(wget -O - https://raw.githubusercontent.com/AceAsket/RuOpenRay-Keenetic/main/scripts/install-keenetic.sh)"
+```
+
+Set a password explicitly:
+
+```sh
+RUOPENRAY_PASSWORD='change-me' sh -c "$(curl -fsSL https://raw.githubusercontent.com/AceAsket/RuOpenRay-Keenetic/main/scripts/install-keenetic.sh)"
+```
+
+The panel starts at:
+
+```text
+http://192.168.1.1:9090/
+```
+
+The installer writes:
+
+```text
+/opt/etc/ruopenray-ui/ruopenray-ui.env
+/opt/etc/init.d/S99ruopenray-ui
+/opt/etc/init.d/S99ruopenray-xray
+```
+
+The installer downloads the web UI from the latest GitHub release. Until the first release is published, pass a built binary URL explicitly:
+
+```sh
+RUOPENRAY_BINARY_URL='https://example.com/ruopenray-ui-linux-arm64' sh -c "$(wget -O - https://raw.githubusercontent.com/AceAsket/RuOpenRay-Keenetic/main/scripts/install-keenetic.sh)"
+```
+
+It does not install Xray yet. If `/opt/sbin/xray` is missing, install or upload it before starting `S99ruopenray-xray`.
+
+## XKeen Reference
+
+XKeen is a useful reference for Keenetic-specific runtime details, but RuOpenRay Keenetic should not depend on XKeen for the core web UI. The immediate goal is native web management plus KeeneticOS/Entware integration.
+
+The parts worth studying before implementing the Keenetic adapter:
 
 - `/opt/etc/init.d/S99xkeen`
 - `/opt/etc/ndm/netfilter.d/proxy.sh`
@@ -44,14 +98,14 @@ XKeen already handles the Keenetic-specific dangerous parts:
 - Keenetic policy marks
 - external lists in `/opt/etc/xkeen/`
 
-RuOpenRay Keenetic should first become the web control plane, then gradually absorb or wrap XKeen-compatible actions where it is safe.
+RuOpenRay Keenetic should first become the web control plane, then add its own safe Keenetic adapters for firewall, DNS, policies, and service control.
 
 ## Initial Roadmap
 
-1. Add `scripts/install-keenetic.sh`.
-2. Add `/opt/etc/init.d/S99ruopenray-ui` packaging.
-3. Change defaults from `/etc/...` and `/usr/...` to `/opt/...`.
-4. Restart Xray through `S99xkeen` or a dedicated Entware service, not OpenWrt `procd`.
+1. Add KeeneticOS firewall/DNS adapter.
+2. Add web controls for Keenetic policies and `/opt/etc/ndm/netfilter.d/` hooks.
+3. Add guided Xray binary installation for `/opt/sbin/xray`.
+4. Add router-side smoke tests against a real Keenetic stand.
 5. Hide or disable OpenWrt-only DNS/firewall actions until Keenetic adapters exist.
 6. Add Keenetic status checks for Entware, `opkg`, `iptables`, `ndm` hooks, and XKeen files.
 

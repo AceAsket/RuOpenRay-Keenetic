@@ -220,10 +220,15 @@ func (s *serverState) restartAppServiceLater() map[string]any {
 	if runtime.GOOS == "windows" {
 		return map[string]any{"ok": true, "stdout": "dev-mode: перезапуск ruopenray-ui пропущен"}
 	}
-	if _, err := os.Stat("/etc/init.d/" + appServiceName); err != nil {
+	serviceScript := s.cfg.appServiceScript()
+	if _, err := os.Stat(serviceScript); err != nil {
 		return map[string]any{"ok": true, "stdout": "init-скрипт ruopenray-ui не найден; перезапустите сервис вручную"}
 	}
-	cmd := exec.Command("sh", "-c", "sleep 1; /etc/init.d/ruopenray-ui restart >/tmp/ruopenray-ui-update.log 2>&1")
+	logPath := "/tmp/ruopenray-ui-update.log"
+	if s.cfg.isKeenetic() {
+		logPath = "/opt/tmp/ruopenray-ui-update.log"
+	}
+	cmd := exec.Command("sh", "-c", "sleep 1; "+singleQuote(serviceScript)+" restart >"+singleQuote(logPath)+" 2>&1")
 	if err := cmd.Start(); err != nil {
 		return map[string]any{"ok": false, "stderr": err.Error()}
 	}
