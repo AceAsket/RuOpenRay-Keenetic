@@ -94,6 +94,27 @@ export function createFirewallActions({
     }
   }
 
+  async function loadTproxyModules() {
+    state.firewallSaving = true;
+    state.busyAction = 'loadTproxyModules';
+    state.busyLabel = 'Загружаю TPROXY';
+    render();
+    try {
+      const result = await request('/api/firewall/tproxy-modules', { method: 'POST' });
+      state.firewallStatus = result.status || state.firewallStatus;
+      if (result.tproxyModules && state.firewallStatus) state.firewallStatus.tproxyModules = result.tproxyModules;
+      state.message = result.ok
+        ? 'TPROXY-модули загружены'
+        : (result.error || result.tproxyModules?.detail || 'TPROXY-модули не загрузились');
+      return result;
+    } finally {
+      state.firewallSaving = false;
+      if (state.busyAction === 'loadTproxyModules') state.busyAction = '';
+      state.busyLabel = '';
+      render();
+    }
+  }
+
   async function refreshFirewallStatus() {
     state.busyAction = 'refreshFirewallStatus';
     render();
@@ -247,6 +268,7 @@ export function createFirewallActions({
     applyFirewall,
     disableFirewall,
     repairFirewall,
+    loadTproxyModules,
     refreshFirewallStatus,
     downloadFirewallRules,
     setFirewallBypassMode,

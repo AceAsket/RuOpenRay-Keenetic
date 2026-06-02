@@ -58,6 +58,16 @@ func TestKeeneticFirewallMetaCarriesDnsAndIPv6(t *testing.T) {
 	}
 }
 
+func TestKeeneticSettingsReportsEntwareProxyApplied(t *testing.T) {
+	state := &serverState{cfg: appConfig{DataDir: t.TempDir(), Platform: "keenetic"}}
+	state.saveKeeneticSettings(map[string]any{"entwareProxy": true})
+	report := state.keeneticSettings()
+	features, _ := report["appliedFeatures"].(map[string]any)
+	if features["entwareProxy"] != true {
+		t.Fatalf("entwareProxy applied feature = %#v", features["entwareProxy"])
+	}
+}
+
 func TestKeeneticPreviewIncludesDnsAndIPv6Env(t *testing.T) {
 	state := &serverState{cfg: appConfig{DataDir: t.TempDir(), Platform: "keenetic"}}
 	state.saveKeeneticSettings(map[string]any{"ipv6Mode": "disable"})

@@ -365,7 +365,7 @@ func separateGeoTargets(target string) (string, string) {
 
 func (s *serverState) downloadGeoFile(name string, rawURL string, keepBackup ...bool) map[string]any {
 	downloadURL := s.mirrorURL(rawURL)
-	resp, resolver, err := s.downloadGeoResponse(downloadURL)
+	resp, resolver, proxy, err := s.downloadGeoResponse(downloadURL)
 	if err != nil {
 		return map[string]any{"ok": false, "file": name, "stderr": err.Error(), "url": downloadURL, "sourceUrl": rawURL}
 	}
@@ -398,6 +398,9 @@ func (s *serverState) downloadGeoFile(name string, rawURL string, keepBackup ...
 		return map[string]any{"ok": false, "file": name, "stderr": err.Error(), "url": downloadURL, "sourceUrl": rawURL}
 	}
 	result := map[string]any{"ok": true, "file": name, "stdout": fmt.Sprintf("%s обновлен: %s", name, byteCount(int64(len(body)))), "url": downloadURL, "sourceUrl": rawURL, "size": len(body)}
+	if proxy["enabled"] == true {
+		result["downloadProxy"] = proxy
+	}
 	if resolver != "" {
 		result["resolver"] = resolver
 		result["stdout"] = fmt.Sprintf("%s\nиспользован резервный DNS: %s", result["stdout"], resolver)
@@ -445,11 +448,11 @@ func geoUpdateError(updates []map[string]any, restart map[string]any) string {
 	return prefix + "\n" + strings.Join(failed, "\n")
 }
 
-func (s *serverState) downloadGeoResponse(downloadURL string) (*http.Response, string, error) {
-	client := &http.Client{Timeout: 90 * time.Second}
+func (s *serverState) downloadGeoResponse(downloadURL string) (*http.Response, string, map[string]any, error) {
+	client, proxy := s.downloadHTTPClient(90 * time.Second)
 	resp, err := client.Get(downloadURL)
 	if err == nil || !looksLikeDNSFailure(err.Error()) {
-		return resp, "", err
+		return resp, "", proxy, err
 	}
 	firstErr := err
 	for _, dnsServer := range geoFallbackDNSServers() {
@@ -462,10 +465,10 @@ func (s *serverState) downloadGeoResponse(downloadURL string) (*http.Response, s
 		}
 		resp, err := fallback.Get(downloadURL)
 		if err == nil {
-			return resp, dnsServer, nil
+			return resp, dnsServer, proxy, nil
 		}
 	}
-	return nil, "", firstErr
+	return nil, "", proxy, firstErr
 }
 
 func looksLikeDNSFailure(message string) bool {

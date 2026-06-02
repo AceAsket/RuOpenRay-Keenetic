@@ -190,6 +190,8 @@ func (s *serverState) handleAPI(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 200, s.applyFirewall(payload))
 	case path == "/firewall/repair" && r.Method == http.MethodPost:
 		writeJSON(w, 200, s.repairFirewall())
+	case path == "/firewall/tproxy-modules" && r.Method == http.MethodPost:
+		writeJSON(w, 200, s.loadFirewallTPROXYModules())
 	case path == "/firewall/disable" && r.Method == http.MethodPost:
 		writeJSON(w, 200, s.disableFirewall())
 	case path == "/firewall/restore" && r.Method == http.MethodPost:
@@ -205,13 +207,13 @@ func (s *serverState) handleAPI(w http.ResponseWriter, r *http.Request) {
 		cfg, _ := s.readActiveConfig()
 		writeJSON(w, 200, s.xrayTrafficStats(cfg, true))
 	case path == "/core/releases" && r.Method == http.MethodGet:
-		releases, err := xrayCoreReleases()
+		releases, err := s.xrayCoreReleases()
 		respond(w, map[string]any{"ok": true, "releases": releases, "asset": xrayAssetName(), "arch": systemArchitecture("github-release")}, err)
 	case path == "/core/update" && r.Method == http.MethodPost:
 		payload, _ := readJSON(w, r)
 		writeJSON(w, 200, s.updateCore(strings.TrimSpace(fmt.Sprint(payload["version"])), boolPayload(payload, "backup", false)))
 	case path == "/app/releases" && r.Method == http.MethodGet:
-		release, err := appLatestRelease()
+		release, err := s.appLatestRelease()
 		respond(w, map[string]any{"ok": true, "version": appVersion, "asset": ruOpenRayAssetName(), "arch": systemArchitecture("github-release"), "release": release}, err)
 	case path == "/app/update" && r.Method == http.MethodPost:
 		payload, _ := readJSON(w, r)

@@ -38,11 +38,12 @@ func appReleaseAPI(version string) string {
 	return "https://api.github.com/repos/" + appRepoFullName + "/releases/tags/" + url.PathEscape(version)
 }
 
-func appLatestRelease() (map[string]any, error) {
+func (s *serverState) appLatestRelease() (map[string]any, error) {
 	req, _ := http.NewRequest(http.MethodGet, "https://api.github.com/repos/"+appRepoFullName+"/releases?per_page=1", nil)
 	req.Header.Set("accept", "application/vnd.github+json")
 	req.Header.Set("user-agent", "RuOpenRay UI")
-	resp, err := (&http.Client{Timeout: 12 * time.Second}).Do(req)
+	client, _ := s.downloadHTTPClient(12 * time.Second)
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -65,14 +66,15 @@ func appLatestRelease() (map[string]any, error) {
 	return parseAppRelease(raw[0]), nil
 }
 
-func appRelease(version string) (map[string]any, error) {
+func (s *serverState) appRelease(version string) (map[string]any, error) {
 	if version == "" || version == "latest" || version == "<nil>" {
-		return appLatestRelease()
+		return s.appLatestRelease()
 	}
 	req, _ := http.NewRequest(http.MethodGet, appReleaseAPI(version), nil)
 	req.Header.Set("accept", "application/vnd.github+json")
 	req.Header.Set("user-agent", "RuOpenRay UI")
-	resp, err := (&http.Client{Timeout: 12 * time.Second}).Do(req)
+	client, _ := s.downloadHTTPClient(12 * time.Second)
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -155,7 +157,7 @@ func replaceExecutableAcrossFilesystems(src string, dst string) error {
 }
 
 func (s *serverState) updateApp(version string, keepBackup bool) map[string]any {
-	release, err := appRelease(version)
+	release, err := s.appRelease(version)
 	if err != nil {
 		return map[string]any{"ok": false, "stderr": err.Error(), "version": appVersion, "arch": systemArchitecture("github-release")}
 	}
@@ -169,13 +171,14 @@ func (s *serverState) updateApp(version string, keepBackup bool) map[string]any 
 	}
 	exe, _ = filepath.Abs(exe)
 	downloadURL := s.mirrorURL(assetURL)
-	resp, err := (&http.Client{Timeout: 120 * time.Second}).Get(downloadURL)
+	client, proxy := s.downloadHTTPClient(120 * time.Second)
+	resp, err := client.Get(downloadURL)
 	if err != nil {
-		return map[string]any{"ok": false, "stderr": err.Error(), "url": downloadURL, "release": release}
+		return map[string]any{"ok": false, "stderr": err.Error(), "url": downloadURL, "release": release, "downloadProxy": proxy}
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return map[string]any{"ok": false, "stderr": fmt.Sprintf("download HTTP %d", resp.StatusCode), "url": downloadURL, "release": release}
+		return map[string]any{"ok": false, "stderr": fmt.Sprintf("download HTTP %d", resp.StatusCode), "url": downloadURL, "release": release, "downloadProxy": proxy}
 	}
 	tmp := filepath.Join(os.TempDir(), fmt.Sprintf("ruopenray-ui-%d.new", time.Now().UnixNano()))
 	out, err := os.OpenFile(tmp, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o755)
@@ -212,7 +215,8 @@ func (s *serverState) updateApp(version string, keepBackup bool) map[string]any 
 	return map[string]any{
 		"ok": true, "version": release["tag"], "previous": appVersion, "release": release,
 		"backup": backup, "backupEnabled": keepBackup, "size": size, "target": exe, "restart": restart,
-		"stdout": fmt.Sprintf("RuOpenRay UI обновлен до %s. Сервис будет перезапущен.", release["tag"]),
+		"downloadProxy": proxy,
+		"stdout":        fmt.Sprintf("RuOpenRay UI обновлен до %s. Сервис будет перезапущен.", release["tag"]),
 	}
 }
 

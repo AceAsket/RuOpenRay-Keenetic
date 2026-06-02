@@ -1080,6 +1080,7 @@ function firewallApplyPanel() {
   const moduleState = isKeenetic
     ? status.tproxyModules?.ok ? 'TPROXY готов' : status.tproxyModules?.loadable ? 'TPROXY загрузится' : 'REDIRECT режим'
     : (status.tproxyModules?.ok === false ? 'не все установлены' : 'готово');
+  const canLoadTproxyModules = isKeenetic && status.tproxyModules?.ok !== true && status.tproxyModules?.unsupported !== true;
   const previewTitle = isKeenetic ? 'Preview Keenetic hook' : 'Preview nftables';
   const previewDetail = isKeenetic ? 'Что будет сохранено в /opt/etc/ndm и применено через iptables.' : 'Что будет сохранено и применено на OpenWrt.';
   const matchesSelection = typeof firewallReadyStatus === 'function' ? firewallReadyStatus(status) : true;
@@ -1098,6 +1099,7 @@ function firewallApplyPanel() {
         <div><h2>Применение</h2><span>${isKeenetic ? 'Сохраняет Keenetic hook и применяет iptables-цепочки; для TPROXY также восстанавливает table 111.' : 'Сохраняет nftables и, для TPROXY, policy routing после перезапуска firewall.'}</span></div>
         <div class="split-actions">
           <button class="btn secondary" data-action="refreshFirewallStatus" ${state.firewallSaving ? 'disabled' : ''}>Обновить</button>
+          ${isKeenetic ? `<button class="btn secondary ${state.busyAction === 'loadTproxyModules' ? 'is-busy' : ''}" data-action="loadTproxyModules" ${state.firewallSaving || !canLoadTproxyModules ? 'disabled' : ''}>${state.busyAction === 'loadTproxyModules' ? 'Загружаю...' : 'Загрузить TPROXY'}</button>` : ''}
           ${isKeenetic || status.routerMode === 'tproxy' ? `<button class="btn secondary ${state.busyAction === 'repairFirewall' ? 'is-busy' : ''}" data-action="repairFirewall" ${state.firewallSaving || status.routerMode !== 'tproxy' ? 'disabled' : ''}>${state.busyAction === 'repairFirewall' ? 'Восстанавливаю...' : 'Восстановить TPROXY'}</button>` : ''}
           <button class="btn secondary" data-action="downloadFirewallRules" ${state.firewallSaving ? 'disabled' : ''}>Скачать правила</button>
           <button class="btn warning ${state.firewallSaving || state.configApplying ? 'is-busy' : ''}" data-action="apply" ${state.firewallSaving || state.configApplying || !available || blockedBySafety ? 'disabled' : ''}>${state.firewallSaving || state.configApplying ? 'Применяю изменения...' : 'Применить изменения'}</button>

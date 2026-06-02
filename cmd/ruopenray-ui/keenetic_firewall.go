@@ -389,6 +389,8 @@ func keeneticIP6TablesPath() string {
 
 func keeneticTPROXYTargetStatus() map[string]any {
 	required := []string{"TPROXY"}
+	modulePaths := keeneticTPROXYModulePaths()
+	modulesPresent := len(modulePaths["missing"]) == 0
 	body, err := os.ReadFile("/proc/net/ip_tables_targets")
 	if err != nil {
 		return map[string]any{
@@ -399,6 +401,7 @@ func keeneticTPROXYTargetStatus() map[string]any {
 			"unsupported": true,
 			"detail":      "TPROXY target is not available on this Keenetic kernel",
 			"error":       err.Error(),
+			"modules":     modulePaths,
 		}
 	}
 	available := false
@@ -415,6 +418,7 @@ func keeneticTPROXYTargetStatus() map[string]any {
 			"installed": required,
 			"missing":   []string{},
 			"detail":    "TPROXY target is available",
+			"modules":   modulePaths,
 		}
 	}
 	return map[string]any{
@@ -422,26 +426,59 @@ func keeneticTPROXYTargetStatus() map[string]any {
 		"required":    required,
 		"installed":   []string{},
 		"missing":     required,
-		"unsupported": !keeneticTPROXYModulesPresent(),
-		"loadable":    keeneticTPROXYModulesPresent(),
+		"unsupported": !modulesPresent,
+		"loadable":    modulesPresent,
 		"detail":      "TPROXY target is not loaded; RuOpenRay can load xt_socket/xt_TPROXY on Keenetic if kernel modules are present",
+		"modules":     modulePaths,
 	}
 }
 
 func keeneticTPROXYModulesPresent() bool {
+	return len(keeneticTPROXYModulePaths()["missing"]) == 0
+}
+
+func keeneticTPROXYModulePaths() map[string][]string {
 	kernel := strings.TrimSpace(fmt.Sprint(runTimeout(3*time.Second, "uname", "-r")["stdout"]))
 	if kernel == "" || kernel == "<nil>" {
-		return false
+		return map[string][]string{"present": []string{}, "missing": []string{"kernel"}}
 	}
+	present := []string{}
+	missing := []string{}
 	for _, path := range []string{
 		"/lib/modules/" + kernel + "/xt_socket.ko",
 		"/lib/modules/" + kernel + "/xt_TPROXY.ko",
 	} {
 		if _, err := os.Stat(path); err != nil {
-			return false
+			missing = append(missing, path)
+		} else {
+			present = append(present, path)
 		}
 	}
-	return true
+	return map[string][]string{"present": present, "missing": missing}
+}
+
+func (s *serverState) loadFirewallTPROXYModules() map[string]any {
+	if !s.cfg.isKeenetic() {
+		return map[string]any{"ok": false, "error": "TPROXY module loading is only available on Keenetic", "status": s.firewallStatus()}
+	}
+	if runtime.GOOS == "windows" {
+		return map[string]any{"ok": false, "error": "TPROXY modules can only be loaded on the router", "status": s.firewallStatus()}
+	}
+	before := keeneticTPROXYTargetStatus()
+	paths := keeneticTPROXYModulePaths()
+	steps := []map[string]any{}
+	for _, path := range paths["present"] {
+		steps = append(steps, runTimeout(5*time.Second, "insmod", path))
+	}
+	after := keeneticTPROXYTargetStatus()
+	status := s.firewallStatus()
+	return map[string]any{
+		"ok":            after["ok"] == true,
+		"before":        before,
+		"tproxyModules": after,
+		"steps":         steps,
+		"status":        status,
+	}
 }
 
 func parseKeeneticRedirectPort(text string) int {

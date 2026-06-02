@@ -23,7 +23,7 @@ var xrayCoreReleasesCache = struct {
 	items: []map[string]any{},
 }
 
-func xrayCoreReleases() ([]map[string]any, error) {
+func (s *serverState) xrayCoreReleases() ([]map[string]any, error) {
 	xrayCoreReleasesCache.Lock()
 	if len(xrayCoreReleasesCache.items) > 0 && time.Since(xrayCoreReleasesCache.loadedAt) < 10*time.Minute {
 		cached := append([]map[string]any(nil), xrayCoreReleasesCache.items...)
@@ -35,7 +35,8 @@ func xrayCoreReleases() ([]map[string]any, error) {
 	req, _ := http.NewRequest(http.MethodGet, "https://api.github.com/repos/XTLS/Xray-core/releases?per_page=50", nil)
 	req.Header.Set("accept", "application/vnd.github+json")
 	req.Header.Set("user-agent", "RuOpenRay UI")
-	resp, err := (&http.Client{Timeout: 12 * time.Second}).Do(req)
+	client, _ := s.downloadHTTPClient(12 * time.Second)
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -173,8 +174,8 @@ func systemArchitecture(manager string) map[string]any {
 	}
 }
 
-func findReleaseAsset(version string) (string, string, error) {
-	releases, err := xrayCoreReleases()
+func (s *serverState) findReleaseAsset(version string) (string, string, error) {
+	releases, err := s.xrayCoreReleases()
 	if err != nil {
 		return "", "", err
 	}
@@ -192,18 +193,19 @@ func findReleaseAsset(version string) (string, string, error) {
 
 func (s *serverState) installCoreRelease(version string, keepBackup bool) map[string]any {
 	arch := systemArchitecture("github-release")
-	assetURL, assetName, err := findReleaseAsset(version)
+	assetURL, assetName, err := s.findReleaseAsset(version)
 	if err != nil {
 		return map[string]any{"ok": false, "stderr": err.Error(), "arch": arch}
 	}
 	downloadURL := s.mirrorURL(assetURL)
-	resp, err := (&http.Client{Timeout: 90 * time.Second}).Get(downloadURL)
+	client, proxy := s.downloadHTTPClient(90 * time.Second)
+	resp, err := client.Get(downloadURL)
 	if err != nil {
-		return map[string]any{"ok": false, "stderr": err.Error(), "arch": arch, "url": downloadURL}
+		return map[string]any{"ok": false, "stderr": err.Error(), "arch": arch, "url": downloadURL, "downloadProxy": proxy}
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return map[string]any{"ok": false, "stderr": fmt.Sprintf("download HTTP %d", resp.StatusCode), "arch": arch, "url": downloadURL}
+		return map[string]any{"ok": false, "stderr": fmt.Sprintf("download HTTP %d", resp.StatusCode), "arch": arch, "url": downloadURL, "downloadProxy": proxy}
 	}
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -249,7 +251,7 @@ func (s *serverState) installCoreRelease(version string, keepBackup bool) map[st
 	if len(current) > 0 && backup != "" {
 		_ = os.WriteFile(backup, current, 0o755)
 	}
-	return map[string]any{"ok": true, "stdout": fmt.Sprintf("Установлен %s из %s", version, assetName), "backup": backup, "backupEnabled": keepBackup, "url": downloadURL}
+	return map[string]any{"ok": true, "stdout": fmt.Sprintf("Установлен %s из %s", version, assetName), "backup": backup, "backupEnabled": keepBackup, "url": downloadURL, "downloadProxy": proxy}
 }
 
 func (s *serverState) updateCore(version string, keepBackup bool) map[string]any {
