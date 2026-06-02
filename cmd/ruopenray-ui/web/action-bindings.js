@@ -28,6 +28,7 @@ const busyLabels = {
   cleanupExtraGeoDat: 'Удаляю лишние geo-файлы',
   refreshStorageReport: 'Обновляю отчёт по памяти',
   cleanupStorageBackups: 'Очищаю резервные копии',
+  cleanupBinaryBackups: 'Очищаю старые бинарники панели',
   cleanupPackageCache: 'Очищаю кэш пакетов',
   cleanupUnusedDat: 'Удаляю неиспользуемые DAT',
   refreshLogs: 'Обновляю логи',

@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -39,7 +40,7 @@ func appReleaseAPI(version string) string {
 }
 
 func (s *serverState) appLatestRelease() (map[string]any, error) {
-	req, _ := http.NewRequest(http.MethodGet, "https://api.github.com/repos/"+appRepoFullName+"/releases?per_page=1", nil)
+	req, _ := http.NewRequest(http.MethodGet, "https://api.github.com/repos/"+appRepoFullName+"/releases?per_page=30", nil)
 	req.Header.Set("accept", "application/vnd.github+json")
 	req.Header.Set("user-agent", "RuOpenRay UI")
 	client, _ := s.downloadHTTPClient(12 * time.Second)
@@ -62,6 +63,31 @@ func (s *serverState) appLatestRelease() (map[string]any, error) {
 	if len(raw) == 0 {
 		assetName := ruOpenRayAssetName()
 		return map[string]any{"tag": "", "name": "релизов пока нет", "asset": assetName, "assetUrl": "", "assetSize": 0, "current": appVersion, "update": false}, nil
+	}
+	var best map[string]any
+	for _, item := range raw {
+		parsed := parseAppRelease(item)
+		if strings.TrimSpace(fmt.Sprint(parsed["assetUrl"])) == "" || number(parsed["assetSize"], 0) < 1024*1024 {
+			continue
+		}
+		if best == nil || newerAppRelease(parsed, best) {
+			best = parsed
+		}
+	}
+	if best != nil {
+		return best, nil
+	}
+	for _, item := range raw {
+		parsed := parseAppRelease(item)
+		if strings.TrimSpace(fmt.Sprint(parsed["tag"])) == "" {
+			continue
+		}
+		if best == nil || newerAppRelease(parsed, best) {
+			best = parsed
+		}
+	}
+	if best != nil {
+		return best, nil
 	}
 	return parseAppRelease(raw[0]), nil
 }
@@ -115,6 +141,48 @@ func parseAppRelease(raw map[string]any) map[string]any {
 		"current":     appVersion,
 		"update":      tag != "" && tag != appVersion,
 	}
+}
+
+func newerAppRelease(candidate map[string]any, current map[string]any) bool {
+	candidateRank, candidateOK := appReleaseRank(fmt.Sprint(candidate["tag"]))
+	currentRank, currentOK := appReleaseRank(fmt.Sprint(current["tag"]))
+	if candidateOK && currentOK {
+		for i := 0; i < len(candidateRank) && i < len(currentRank); i++ {
+			if candidateRank[i] != currentRank[i] {
+				return candidateRank[i] > currentRank[i]
+			}
+		}
+		return len(candidateRank) > len(currentRank)
+	}
+	if candidateOK != currentOK {
+		return candidateOK
+	}
+	return fmt.Sprint(candidate["publishedAt"]) > fmt.Sprint(current["publishedAt"])
+}
+
+func appReleaseRank(tag string) ([]int, bool) {
+	tag = strings.TrimPrefix(strings.TrimSpace(tag), "v")
+	parts := strings.Split(tag, "-keenetic.")
+	if len(parts) != 2 {
+		return nil, false
+	}
+	base := strings.Split(parts[0], ".")
+	if len(base) == 0 {
+		return nil, false
+	}
+	rank := make([]int, 0, len(base)+1)
+	for _, part := range base {
+		value, err := strconv.Atoi(part)
+		if err != nil {
+			return nil, false
+		}
+		rank = append(rank, value)
+	}
+	value, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return nil, false
+	}
+	return append(rank, value), true
 }
 
 func replaceExecutableAcrossFilesystems(src string, dst string) error {
@@ -171,21 +239,43 @@ func (s *serverState) updateApp(version string, keepBackup bool) map[string]any 
 	}
 	exe, _ = filepath.Abs(exe)
 	downloadURL := s.mirrorURL(assetURL)
-	client, proxy := s.downloadHTTPClient(120 * time.Second)
-	resp, err := client.Get(downloadURL)
-	if err != nil {
-		return map[string]any{"ok": false, "stderr": err.Error(), "url": downloadURL, "release": release, "downloadProxy": proxy}
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return map[string]any{"ok": false, "stderr": fmt.Sprintf("download HTTP %d", resp.StatusCode), "url": downloadURL, "release": release, "downloadProxy": proxy}
-	}
 	tmp := filepath.Join(os.TempDir(), fmt.Sprintf("ruopenray-ui-%d.new", time.Now().UnixNano()))
 	out, err := os.OpenFile(tmp, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o755)
 	if err != nil {
 		return map[string]any{"ok": false, "stderr": err.Error(), "release": release}
 	}
-	size, copyErr := io.Copy(out, io.LimitReader(resp.Body, 64*1024*1024))
+	proxy := map[string]any{"enabled": false, "used": false}
+	source := "github"
+	var reader io.ReadCloser
+	if offlinePath := s.offlineAssetPath(ruOpenRayAssetName()); offlinePath != "" {
+		reader, err = os.Open(offlinePath)
+		source = "offline"
+		proxy = map[string]any{"enabled": true, "used": false, "offline": true, "path": offlinePath}
+	} else {
+		var resp *http.Response
+		resp, proxy, err = s.downloadHTTPGet(downloadURL, 120*time.Second)
+		if err != nil {
+			_ = out.Close()
+			_ = os.Remove(tmp)
+			return map[string]any{"ok": false, "stderr": err.Error(), "url": downloadURL, "release": release, "downloadProxy": proxy}
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			_ = out.Close()
+			_ = os.Remove(tmp)
+			return map[string]any{"ok": false, "stderr": fmt.Sprintf("download HTTP %d", resp.StatusCode), "url": downloadURL, "release": release, "downloadProxy": proxy}
+		}
+		reader = resp.Body
+	}
+	if err != nil {
+		_ = out.Close()
+		_ = os.Remove(tmp)
+		return map[string]any{"ok": false, "stderr": err.Error(), "release": release, "downloadProxy": proxy}
+	}
+	size, copyErr := io.Copy(out, io.LimitReader(reader, 64*1024*1024))
+	if source == "offline" {
+		_ = reader.Close()
+	}
 	closeErr := out.Close()
 	if copyErr != nil {
 		_ = os.Remove(tmp)
@@ -216,6 +306,7 @@ func (s *serverState) updateApp(version string, keepBackup bool) map[string]any 
 		"ok": true, "version": release["tag"], "previous": appVersion, "release": release,
 		"backup": backup, "backupEnabled": keepBackup, "size": size, "target": exe, "restart": restart,
 		"downloadProxy": proxy,
+		"source":        source,
 		"stdout":        fmt.Sprintf("RuOpenRay UI обновлен до %s. Сервис будет перезапущен.", release["tag"]),
 	}
 }

@@ -2,9 +2,12 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -29,6 +32,73 @@ func (s *serverState) downloadHTTPClient(timeout time.Duration) (*http.Client, m
 	info["used"] = true
 	transport := &http.Transport{Proxy: http.ProxyURL(proxyURL)}
 	return &http.Client{Timeout: timeout, Transport: transport}, info
+}
+
+func (s *serverState) downloadHTTPGet(rawURL string, timeout time.Duration) (*http.Response, map[string]any, error) {
+	attempts := s.downloadAttempts()
+	var lastErr error
+	var proxy map[string]any
+	for attempt := 1; attempt <= attempts; attempt++ {
+		client, currentProxy := s.downloadHTTPClient(timeout)
+		proxy = currentProxy
+		proxy["attempt"] = attempt
+		proxy["attempts"] = attempts
+		resp, err := client.Get(rawURL)
+		if err == nil && (resp.StatusCode < 500 || attempt == attempts) {
+			return resp, proxy, nil
+		}
+		if resp != nil && resp.Body != nil {
+			_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
+			_ = resp.Body.Close()
+		}
+		if err != nil {
+			lastErr = err
+		} else {
+			lastErr = fmt.Errorf("download HTTP %d", resp.StatusCode)
+		}
+		time.Sleep(time.Duration(attempt) * 350 * time.Millisecond)
+	}
+	if proxy == nil {
+		_, proxy = s.downloadHTTPClient(timeout)
+	}
+	return nil, proxy, lastErr
+}
+
+func (s *serverState) downloadAttempts() int {
+	if !s.cfg.isKeenetic() {
+		return 1
+	}
+	settings := s.normalizeKeeneticSettings(map[string]any{})
+	return cleanKeeneticRetries(settings["downloadRetries"])
+}
+
+func (s *serverState) offlineInstallEnabled() bool {
+	if !s.cfg.isKeenetic() {
+		return false
+	}
+	settings := s.normalizeKeeneticSettings(map[string]any{})
+	return settings["offlineInstall"] == true
+}
+
+func (s *serverState) offlineInstallDirs() []string {
+	dirs := []string{"/opt/var/ruopenray-ui/offline", filepath.Join(s.cfg.DataDir, "offline")}
+	if strings.TrimSpace(s.cfg.BackupDir) != "" {
+		dirs = append(dirs, filepath.Join(filepath.Dir(s.cfg.BackupDir), "offline"))
+	}
+	return unique(dirs)
+}
+
+func (s *serverState) offlineAssetPath(assetName string) string {
+	if !s.offlineInstallEnabled() || strings.TrimSpace(assetName) == "" {
+		return ""
+	}
+	for _, dir := range s.offlineInstallDirs() {
+		path := filepath.Join(dir, filepath.Base(assetName))
+		if info, err := os.Stat(path); err == nil && !info.IsDir() && info.Size() > 0 {
+			return path
+		}
+	}
+	return ""
 }
 
 func (s *serverState) keeneticDownloadProxyURL() (*url.URL, map[string]any) {

@@ -198,18 +198,27 @@ func (s *serverState) installCoreRelease(version string, keepBackup bool) map[st
 		return map[string]any{"ok": false, "stderr": err.Error(), "arch": arch}
 	}
 	downloadURL := s.mirrorURL(assetURL)
-	client, proxy := s.downloadHTTPClient(90 * time.Second)
-	resp, err := client.Get(downloadURL)
-	if err != nil {
-		return map[string]any{"ok": false, "stderr": err.Error(), "arch": arch, "url": downloadURL, "downloadProxy": proxy}
+	proxy := map[string]any{"enabled": false, "used": false}
+	source := "github"
+	var body []byte
+	if offlinePath := s.offlineAssetPath(assetName); offlinePath != "" {
+		body, err = os.ReadFile(offlinePath)
+		source = "offline"
+		proxy = map[string]any{"enabled": true, "used": false, "offline": true, "path": offlinePath}
+	} else {
+		var resp *http.Response
+		resp, proxy, err = s.downloadHTTPGet(downloadURL, 90*time.Second)
+		if err != nil {
+			return map[string]any{"ok": false, "stderr": err.Error(), "arch": arch, "url": downloadURL, "downloadProxy": proxy}
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			return map[string]any{"ok": false, "stderr": fmt.Sprintf("download HTTP %d", resp.StatusCode), "arch": arch, "url": downloadURL, "downloadProxy": proxy}
+		}
+		body, err = io.ReadAll(resp.Body)
 	}
-	defer resp.Body.Close()
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return map[string]any{"ok": false, "stderr": fmt.Sprintf("download HTTP %d", resp.StatusCode), "arch": arch, "url": downloadURL, "downloadProxy": proxy}
-	}
-	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return map[string]any{"ok": false, "stderr": err.Error(), "arch": arch}
+		return map[string]any{"ok": false, "stderr": err.Error(), "arch": arch, "downloadProxy": proxy}
 	}
 	reader, err := zip.NewReader(bytes.NewReader(body), int64(len(body)))
 	if err != nil {
@@ -251,7 +260,7 @@ func (s *serverState) installCoreRelease(version string, keepBackup bool) map[st
 	if len(current) > 0 && backup != "" {
 		_ = os.WriteFile(backup, current, 0o755)
 	}
-	return map[string]any{"ok": true, "stdout": fmt.Sprintf("Установлен %s из %s", version, assetName), "backup": backup, "backupEnabled": keepBackup, "url": downloadURL, "downloadProxy": proxy}
+	return map[string]any{"ok": true, "stdout": fmt.Sprintf("Установлен %s из %s", version, assetName), "backup": backup, "backupEnabled": keepBackup, "url": downloadURL, "downloadProxy": proxy, "source": source}
 }
 
 func (s *serverState) updateCore(version string, keepBackup bool) map[string]any {

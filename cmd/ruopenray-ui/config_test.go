@@ -30,6 +30,21 @@ func TestLoadAppConfigDefaultsPaths(t *testing.T) {
 	}
 }
 
+func TestLoadAppConfigKeeneticMovesLegacyBackupDir(t *testing.T) {
+	dataDir := filepath.Join(t.TempDir(), "data")
+	t.Setenv("RUOPENRAY_PLATFORM", "keenetic")
+	t.Setenv("RUOPENRAY_DATA_DIR", dataDir)
+	t.Setenv("RUOPENRAY_BACKUP_DIR", filepath.Join(dataDir, "backups"))
+	t.Setenv("RUOPENRAY_ACTIVE_CONFIG", "")
+	t.Setenv("RUOPENRAY_PROFILES_DIR", "")
+	t.Setenv("RUOPENRAY_GEO_DIR", "")
+
+	cfg := loadAppConfig()
+	if cfg.BackupDir != "/opt/var/ruopenray-ui/backups" {
+		t.Fatalf("unexpected keenetic backup dir: %s", cfg.BackupDir)
+	}
+}
+
 func TestEnsureDataCreatesDefaultProfile(t *testing.T) {
 	dataDir := filepath.Join(t.TempDir(), "data")
 	cfg := appConfig{

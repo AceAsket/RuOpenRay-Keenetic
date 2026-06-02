@@ -102,13 +102,20 @@ func loadAppConfig() appConfig {
 	if cfg.ProfilesDir == "" {
 		cfg.ProfilesDir = filepath.Join(cfg.DataDir, "profiles")
 	}
-	if cfg.BackupDir == "" {
-		cfg.BackupDir = filepath.Join(cfg.DataDir, "backups")
+	if cfg.BackupDir == "" || (cfg.isKeenetic() && filepath.Clean(cfg.BackupDir) == filepath.Clean(filepath.Join(cfg.DataDir, "backups"))) {
+		cfg.BackupDir = defaultBackupDir(platform, cfg.DataDir)
 	}
 	if cfg.GeoDir == "" {
 		cfg.GeoDir = defaultGeoDir(platform)
 	}
 	return cfg
+}
+
+func defaultBackupDir(platform, dataDir string) string {
+	if platform == "keenetic" {
+		return "/opt/var/ruopenray-ui/backups"
+	}
+	return filepath.Join(dataDir, "backups")
 }
 
 func normalizePlatform(value string) string {

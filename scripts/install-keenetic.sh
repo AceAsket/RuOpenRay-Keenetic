@@ -10,7 +10,7 @@ XRAY_SERVICE="${RUOPENRAY_XRAY_SERVICE:-S99ruopenray-xray}"
 INSTALL_DIR="${RUOPENRAY_INSTALL_DIR:-/opt/sbin}"
 INIT_DIR="${RUOPENRAY_INIT_DIR:-/opt/etc/init.d}"
 DATA_DIR="${RUOPENRAY_DATA_DIR:-/opt/etc/ruopenray-ui}"
-BACKUP_DIR="${RUOPENRAY_BACKUP_DIR:-$DATA_DIR/backups}"
+BACKUP_DIR="${RUOPENRAY_BACKUP_DIR:-/opt/var/ruopenray-ui/backups}"
 GEO_DIR="${RUOPENRAY_GEO_DIR:-/opt/etc/xray/dat}"
 XRAY_CONFIG_DIR="${RUOPENRAY_XRAY_CONFIG_DIR:-/opt/etc/xray/configs}"
 ACTIVE_CONFIG="${RUOPENRAY_ACTIVE_CONFIG:-$XRAY_CONFIG_DIR/99_ruopenray.json}"
@@ -102,7 +102,7 @@ download() {
 
 prune_binary_backups() {
 	index=0
-	for backup in $(ls -1t "$INSTALL_DIR/$APP_NAME".backup-* 2>/dev/null || true); do
+	for backup in $(ls -1t "$BACKUP_DIR/$APP_NAME".backup-* 2>/dev/null || true); do
 		index=$((index + 1))
 		[ "$index" -le "$KEEP_BINARY_BACKUPS" ] && continue
 		rm -f "$backup" || true
@@ -124,7 +124,7 @@ install_binary() {
 	[ -s "$tmp" ] || die "downloaded binary is empty"
 	chmod 0755 "$tmp"
 	if [ -x "$INSTALL_DIR/$APP_NAME" ]; then
-		cp "$INSTALL_DIR/$APP_NAME" "$INSTALL_DIR/$APP_NAME.backup-$(date +%Y%m%d-%H%M%S)" || true
+		cp "$INSTALL_DIR/$APP_NAME" "$BACKUP_DIR/$APP_NAME.backup-$(date +%Y%m%d-%H%M%S)" || true
 	fi
 	mv "$tmp" "$INSTALL_DIR/$APP_NAME"
 	prune_binary_backups

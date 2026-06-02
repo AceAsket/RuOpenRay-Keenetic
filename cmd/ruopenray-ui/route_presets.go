@@ -647,8 +647,7 @@ func (s *serverState) fetchRoutePresetCatalog(rawURL string) (map[string]any, st
 	if normalized == "" {
 		return nil, "", "", nil, fmt.Errorf("URL источника пустой")
 	}
-	client, _ := s.downloadHTTPClient(20 * time.Second)
-	resp, err := client.Get(normalized)
+	resp, _, err := s.downloadHTTPGet(normalized, 20*time.Second)
 	if err != nil {
 		return nil, "", "", nil, err
 	}

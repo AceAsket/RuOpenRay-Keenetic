@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 )
 
@@ -111,19 +112,70 @@ func port(u *url.URL, fallback int) int {
 }
 
 func number(value any, fallback int) int {
-	var out int
-	if _, err := fmt.Sscanf(fmt.Sprint(value), "%d", &out); err != nil {
+	out, ok := parseNumber(value)
+	if !ok {
 		return fallback
 	}
-	return out
+	return int(out)
 }
 
 func numberAny(value any) int64 {
-	var out int64
-	if _, err := fmt.Sscanf(fmt.Sprint(value), "%d", &out); err != nil {
-		return 0
-	}
+	out, _ := parseNumber(value)
 	return out
+}
+
+func parseNumber(value any) (int64, bool) {
+	switch typed := value.(type) {
+	case int:
+		return int64(typed), true
+	case int8:
+		return int64(typed), true
+	case int16:
+		return int64(typed), true
+	case int32:
+		return int64(typed), true
+	case int64:
+		return typed, true
+	case uint:
+		return int64(typed), true
+	case uint8:
+		return int64(typed), true
+	case uint16:
+		return int64(typed), true
+	case uint32:
+		return int64(typed), true
+	case uint64:
+		if typed > uint64(^uint64(0)>>1) {
+			return 0, false
+		}
+		return int64(typed), true
+	case float32:
+		return int64(typed), true
+	case float64:
+		return int64(typed), true
+	case string:
+		raw := strings.TrimSpace(typed)
+		if raw == "" {
+			return 0, false
+		}
+		if out, err := strconv.ParseInt(raw, 10, 64); err == nil {
+			return out, true
+		}
+		if out, err := strconv.ParseFloat(raw, 64); err == nil {
+			return int64(out), true
+		}
+	}
+	raw := strings.TrimSpace(fmt.Sprint(value))
+	if raw == "" || raw == "<nil>" {
+		return 0, false
+	}
+	if out, err := strconv.ParseInt(raw, 10, 64); err == nil {
+		return out, true
+	}
+	if out, err := strconv.ParseFloat(raw, 64); err == nil {
+		return int64(out), true
+	}
+	return 0, false
 }
 
 func mapValue(value any) map[string]any {

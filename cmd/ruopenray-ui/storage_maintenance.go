@@ -25,8 +25,10 @@ func (s *serverState) storageReport() map[string]any {
 	geoExtraSize, geoExtraCount := s.geoDatStats(true)
 	packageCache := packageCacheStats()
 	backups := pathStats(s.cfg.BackupDir)
+	offline := multiPathStats(s.offlineInstallDirs())
 	logs := s.logFilesStats()
 	appBinary := currentExecutableInfo()
+	binaryBackups := appBinaryBackupStats()
 	data := pathStats(s.cfg.DataDir)
 
 	return map[string]any{
@@ -37,6 +39,7 @@ func (s *serverState) storageReport() map[string]any {
 		"paths": map[string]any{
 			"dataDir":   s.cfg.DataDir,
 			"backupDir": s.cfg.BackupDir,
+			"offline":   s.offlineInstallDirs(),
 			"geoDir":    s.cfg.GeoDir,
 			"logsDir":   filepath.Join(s.cfg.DataDir, "logs"),
 		},
@@ -76,6 +79,18 @@ func (s *serverState) storageReport() map[string]any {
 				"path":  strings.Join(packageCachePaths(), ", "),
 				"size":  packageCache.Size,
 				"count": packageCache.Count,
+			},
+			"offlineAssets": map[string]any{
+				"label": "Offline assets",
+				"path":  strings.Join(s.offlineInstallDirs(), ", "),
+				"size":  offline.Size,
+				"count": offline.Count,
+			},
+			"binaryBackups": map[string]any{
+				"label": "Legacy binary backups",
+				"path":  appBinaryBackupDir(),
+				"size":  binaryBackups.Size,
+				"count": binaryBackups.Count,
 			},
 			"appBinary": appBinary,
 		},
@@ -121,8 +136,11 @@ func (s *serverState) cleanupStorage(payload map[string]any) map[string]any {
 	case "unused-dat":
 		cfg, _ := s.readActiveConfig()
 		addStep("unused-dat", s.cleanupUnusedGeoDat(referencedDatFiles(cfg)))
+	case "binary-backups":
+		addStep("binary-backups", cleanupAppBinaryBackups())
 	case "all":
 		addStep("backups", cleanupDirectoryContents(s.cfg.BackupDir, true))
+		addStep("binary-backups", cleanupAppBinaryBackups())
 		addStep("package-cache", cleanupPackageCache())
 		cfg, _ := s.readActiveConfig()
 		addStep("unused-dat", s.cleanupUnusedGeoDat(referencedDatFiles(cfg)))
@@ -279,6 +297,22 @@ func pathStats(path string) storagePathStats {
 	return stats
 }
 
+func multiPathStats(paths []string) storagePathStats {
+	stats := storagePathStats{}
+	seen := map[string]bool{}
+	for _, path := range paths {
+		clean, err := filepath.Abs(path)
+		if err != nil || seen[clean] {
+			continue
+		}
+		seen[clean] = true
+		item := pathStats(clean)
+		stats.Size += item.Size
+		stats.Count += item.Count
+	}
+	return stats
+}
+
 func currentExecutableInfo() map[string]any {
 	path, err := os.Executable()
 	if err != nil {
@@ -292,6 +326,70 @@ func currentExecutableInfo() map[string]any {
 	return map[string]any{"label": "Бинарник панели", "path": path, "size": size, "count": 1}
 }
 
+func appBinaryBackupDir() string {
+	path, err := os.Executable()
+	if err != nil {
+		return ""
+	}
+	return filepath.Dir(path)
+}
+
+func appBinaryBackupPaths() []string {
+	dir := appBinaryBackupDir()
+	if dir == "" {
+		return nil
+	}
+	names := []string{}
+	patterns := []string{
+		filepath.Join(dir, "ruopenray-ui.backup-*"),
+		filepath.Join(dir, "ruopenray-ui.prev"),
+	}
+	for _, pattern := range patterns {
+		matches, err := filepath.Glob(pattern)
+		if err == nil {
+			names = append(names, matches...)
+		}
+	}
+	sort.Strings(names)
+	return names
+}
+
+func appBinaryBackupStats() storagePathStats {
+	stats := storagePathStats{}
+	for _, path := range appBinaryBackupPaths() {
+		info, err := os.Stat(path)
+		if err != nil || info.IsDir() {
+			continue
+		}
+		stats.Size += info.Size()
+		stats.Count++
+	}
+	return stats
+}
+
+func cleanupAppBinaryBackups() storageCleanupResult {
+	result := storageCleanupResult{}
+	for _, path := range appBinaryBackupPaths() {
+		info, err := os.Stat(path)
+		if err != nil {
+			if !os.IsNotExist(err) {
+				result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", path, err))
+			}
+			continue
+		}
+		if info.IsDir() {
+			continue
+		}
+		if err := os.Remove(path); err != nil {
+			result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", path, err))
+			continue
+		}
+		result.Deleted++
+		result.Freed += info.Size()
+	}
+	return result
+}
+
 func packageCachePaths() []string {
 	return []string{
 		"/var/cache/apk",
@@ -299,6 +397,8 @@ func packageCachePaths() []string {
 		"/tmp/opkg-lists",
 		"/var/opkg-lists",
 		"/var/lib/opkg/lists",
+		"/opt/var/opkg-lists",
+		"/opt/var/cache/opkg",
 	}
 }
 

@@ -1,6 +1,10 @@
 package main
 
-import "testing"
+import (
+	"os"
+	"path/filepath"
+	"testing"
+)
 
 func TestLocalInboundProxyURLPrefersHTTP(t *testing.T) {
 	proxy, info := localInboundProxyURL([]any{
@@ -30,5 +34,28 @@ func TestLocalInboundProxyURLAddsAuth(t *testing.T) {
 	}
 	if proxy.String() != "socks5://u:p@127.0.0.1:10808" {
 		t.Fatalf("proxy = %s", proxy.String())
+	}
+}
+
+func TestOfflineAssetPathUsesKeeneticOfflineDir(t *testing.T) {
+	dir := t.TempDir()
+	state := &serverState{cfg: appConfig{
+		Platform:  "keenetic",
+		DataDir:   filepath.Join(dir, "data"),
+		BackupDir: filepath.Join(dir, "var", "backups"),
+	}}
+	if result := state.saveKeeneticSettings(map[string]any{"offlineInstall": true}); result["ok"] != true {
+		t.Fatalf("save settings failed: %#v", result)
+	}
+	offlineDir := filepath.Join(filepath.Dir(state.cfg.BackupDir), "offline")
+	if err := os.MkdirAll(offlineDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	want := filepath.Join(offlineDir, "asset.bin")
+	if err := os.WriteFile(want, []byte("asset"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if got := state.offlineAssetPath("asset.bin"); got != want {
+		t.Fatalf("offline asset = %q, want %q", got, want)
 	}
 }

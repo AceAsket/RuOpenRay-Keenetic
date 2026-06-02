@@ -267,6 +267,10 @@ export function createSettingsActions({
     return cleanupStorage('backups', 'Бэкапы очищены');
   }
 
+  function cleanupBinaryBackups() {
+    return cleanupStorage('binary-backups', 'Старые бинарники очищены');
+  }
+
   function cleanupPackageCache() {
     return cleanupStorage('package-cache', 'Кэш пакетов очищен');
   }
@@ -310,6 +314,7 @@ export function createSettingsActions({
     saveKeeneticSettings,
     refreshStorageReport,
     cleanupStorageBackups,
+    cleanupBinaryBackups,
     cleanupPackageCache,
     cleanupUnusedDat,
     setSystemTcpFastOpen,

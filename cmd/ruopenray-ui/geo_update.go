@@ -449,8 +449,7 @@ func geoUpdateError(updates []map[string]any, restart map[string]any) string {
 }
 
 func (s *serverState) downloadGeoResponse(downloadURL string) (*http.Response, string, map[string]any, error) {
-	client, proxy := s.downloadHTTPClient(90 * time.Second)
-	resp, err := client.Get(downloadURL)
+	resp, proxy, err := s.downloadHTTPGet(downloadURL, 90*time.Second)
 	if err == nil || !looksLikeDNSFailure(err.Error()) {
 		return resp, "", proxy, err
 	}

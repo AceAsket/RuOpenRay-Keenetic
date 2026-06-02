@@ -29,6 +29,8 @@ function settingsPanel() {
     ['geoExtra', 'Дополнительные DAT', storageItem('geoExtra').path || '', 'Отдельные файлы для ext:"file.dat:list". Неиспользуемые можно удалить.'],
     ['logs', 'Логи', storageItem('logs').path || '', 'Access/error/DNS-логи и ротационные копии.'],
     ['packageCache', 'Кэш пакетов', storageItem('packageCache').path || '', 'apk/opkg индексы и кэш после установки пакетов.'],
+    ['offlineAssets', 'Offline assets', storageItem('offlineAssets').path || '', 'Локальные ruopenray-ui и Xray zip для установки без GitHub.'],
+    ['binaryBackups', 'Старые бинарники панели', storageItem('binaryBackups').path || '', 'Legacy-копии ruopenray-ui рядом с исполняемым файлом. Их можно убрать после успешного обновления.'],
     ['appBinary', 'Бинарник панели', storageItem('appBinary').path || '', 'Исполняемый файл RuOpenRay UI.']
   ];
   const cleanup = state.storageLastCleanup || null;
@@ -400,7 +402,7 @@ function settingsPanel() {
         <div class="settings-field">
           <label>Повторы загрузок</label>
           <input id="keeneticDownloadRetries" type="number" min="1" max="10" value="${escapeHtml(state.keeneticDownloadRetries)}" />
-          <small>Сохранено для загрузчиков Xray/geo/app; подключение retries следующим шагом.</small>
+          <small>Применяется к загрузкам Xray-core, geo, панели и внешних сценариев маршрутизации.</small>
         </div>
         <label class="settings-check compact ${state.keeneticOfflineInstall ? 'active' : ''}">
           <input id="keeneticOfflineInstall" type="checkbox" ${state.keeneticOfflineInstall ? 'checked' : ''} />
@@ -477,6 +479,7 @@ function settingsPanel() {
       </div>
       <div class="toolbar">
         <button class="btn warning ${state.storageCleaning === 'backups' ? 'is-busy' : ''}" data-action="cleanupStorageBackups" ${state.storageCleaning ? 'disabled' : ''}>${state.storageCleaning === 'backups' ? 'Очищаю...' : 'Очистить резервные копии'}</button>
+        <button class="btn secondary ${state.storageCleaning === 'binary-backups' ? 'is-busy' : ''}" data-action="cleanupBinaryBackups" ${state.storageCleaning ? 'disabled' : ''}>${state.storageCleaning === 'binary-backups' ? 'Очищаю...' : 'Очистить старые бинарники'}</button>
         <button class="btn secondary ${state.storageCleaning === 'package-cache' ? 'is-busy' : ''}" data-action="cleanupPackageCache" ${state.storageCleaning ? 'disabled' : ''}>${state.storageCleaning === 'package-cache' ? 'Очищаю...' : 'Очистить кэш пакетов'}</button>
         <button class="btn secondary ${state.storageCleaning === 'unused-dat' ? 'is-busy' : ''}" data-action="cleanupUnusedDat" ${state.storageCleaning || !unusedDat.length ? 'disabled' : ''}>${state.storageCleaning === 'unused-dat' ? 'Удаляю...' : 'Удалить неиспользуемые DAT'}</button>
       </div>
