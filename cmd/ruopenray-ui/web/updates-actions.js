@@ -178,10 +178,28 @@ export function createUpdatesActions({
   async function installCorePackage() {
     state.coreUpdating = true;
     state.installStep = 'installing';
-    state.message = 'Устанавливаю Xray для Keenetic/Entware...';
+    state.message = 'Подбираю релиз Xray для Keenetic/Entware...';
     render();
     try {
-      const result = await request('/api/core/update', { method: 'POST', body: JSON.stringify({ version: '' }) });
+      let version = state.selectedCoreVersion || '';
+      if (!version) {
+        const releasesResult = await request('/api/core/releases');
+        const releases = Array.isArray(releasesResult?.releases) ? releasesResult.releases : [];
+        if (releases.length) state.coreReleases = releases;
+        const latestStable = releases.find((release) => release.assetUrl && !release.prerelease);
+        const latestInstallable = releases.find((release) => release.assetUrl);
+        version = latestStable?.tag || latestInstallable?.tag || '';
+        state.selectedCoreVersion = version;
+      }
+      if (!version) {
+        state.installStep = 'error';
+        state.message = 'Не удалось подобрать релиз Xray-core для этой архитектуры';
+        render();
+        return;
+      }
+      state.message = `Устанавливаю Xray-core ${version} для Keenetic/Entware...`;
+      render();
+      const result = await request('/api/core/update', { method: 'POST', body: JSON.stringify({ version, backup: state.coreBackup }) });
       state.coreUpdate = result;
       state.coreDialogOpen = false;
       state.installStep = result.ok ? 'done' : 'error';
