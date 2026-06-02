@@ -137,9 +137,12 @@ button:disabled {
 .sidebar-footer {
   margin-top: auto;
   padding-top: 18px;
+  display: grid;
+  gap: 8px;
 }
 
-.logout-button {
+.logout-button,
+.keenetic-link {
   width: 100%;
   height: 38px;
   display: flex;
@@ -151,14 +154,17 @@ button:disabled {
   background: transparent;
   font-weight: 650;
   text-align: left;
+  text-decoration: none;
 }
 
-.logout-button:hover {
+.logout-button:hover,
+.keenetic-link:hover {
   color: var(--text);
   background: #162229;
 }
 
-.logout-button span[aria-hidden="true"] {
+.logout-button span[aria-hidden="true"],
+.keenetic-link span[aria-hidden="true"] {
   width: 20px;
   color: var(--accent);
   text-align: center;

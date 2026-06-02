@@ -1773,7 +1773,8 @@
     padding-top: 0;
   }
 
-  .logout-button {
+  .logout-button,
+  .keenetic-link {
     width: auto;
   }
 
@@ -2286,8 +2287,8 @@
     white-space: nowrap;
   }
 
-  .sidebar.nav-open .logout-button {
-    grid-column: 1 / -1;
+  .sidebar.nav-open .logout-button,
+  .sidebar.nav-open .keenetic-link {
     width: 100%;
     height: 52px;
     justify-content: center;
@@ -2296,7 +2297,8 @@
     text-align: center;
   }
 
-  .sidebar.nav-open .logout-button span[aria-hidden="true"] {
+  .sidebar.nav-open .logout-button span[aria-hidden="true"],
+  .sidebar.nav-open .keenetic-link span[aria-hidden="true"] {
     width: auto;
   }
 

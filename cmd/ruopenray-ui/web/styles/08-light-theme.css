@@ -33,7 +33,8 @@ body[data-theme="light"] .brand-mark {
 
 body[data-theme="light"] .nav button.active,
 body[data-theme="light"] .nav button:hover,
-body[data-theme="light"] .logout-button:hover {
+body[data-theme="light"] .logout-button:hover,
+body[data-theme="light"] .keenetic-link:hover {
   background: #e9f3f0;
 }
 

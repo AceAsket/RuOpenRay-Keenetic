@@ -1877,6 +1877,10 @@ function render() {
           ${nav.map(([key, title]) => `<button class="${key === state.tab ? 'active' : ''}" data-tab="${key}">${title}</button>`).join('')}
         </nav>
         <div class="sidebar-footer">
+          <a class="keenetic-link" href="http://192.168.1.1/" target="_blank" rel="noreferrer" title="Открыть Keenetic Web UI" aria-label="Открыть Keenetic Web UI">
+            <span aria-hidden="true">↗</span>
+            <span>Keenetic</span>
+          </a>
           <button class="logout-button" data-action="logout" type="button" title="Выйти из панели" aria-label="Выйти из панели">
             <span aria-hidden="true">↩</span>
             <span>Выйти</span>
