@@ -1104,7 +1104,7 @@ export function createRoutingActions({
       </summary>
       <div class="route-system-explainer">
         <strong>Как работает перехват LAN-трафика</strong>
-        <p>Firewall OpenWrt через nftables выбирает пакеты LAN-клиентов и отправляет их во входящий поток Xray <code>transparent_ipv4</code>. После этого обычные правила Xray сверху вниз решают, куда пойдет трафик: через proxy, напрямую или в блокировку.</p>
+        <p>${state.firewallStatus?.platform === 'keenetic' ? 'Keenetic hook через Entware iptables выбирает пакеты LAN-клиентов и отправляет их во входящий поток Xray' : 'Firewall OpenWrt через nftables выбирает пакеты LAN-клиентов и отправляет их во входящий поток Xray'} <code>transparent_ipv4</code>. После этого обычные правила Xray сверху вниз решают, куда пойдет трафик: через proxy, напрямую или в блокировку.</p>
         <p>Служебное правило для <code>transparent_ipv4</code> оставляет локальные и приватные адреса напрямую. Это защита от ситуации, когда перехват случайно ломает доступ к роутеру, DHCP, DNS или устройствам в домашней сети.</p>
       </div>
       <div class="route-system-list">

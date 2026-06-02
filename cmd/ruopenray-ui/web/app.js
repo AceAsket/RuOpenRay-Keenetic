@@ -831,10 +831,13 @@ async function applyConfigAndFirewall() {
     return;
   }
 
+  const firewallLabel = state.firewallStatus?.platform === 'keenetic'
+    ? 'Применяю Keenetic hook без перезапуска Xray'
+    : 'Применяю nftables без перезапуска Xray';
   const steps = [
     configDirty ? { id: 'check-xray', label: 'Проверяю черновик Xray перед перезапуском', status: 'pending' } : null,
     configDirty ? { id: 'apply-xray', label: 'Записываю конфигурацию и перезапускаю Xray', status: 'pending' } : null,
-    firewallDirty ? { id: 'apply-firewall', label: 'Применяю nftables без перезапуска Xray', status: 'pending' } : null,
+    firewallDirty ? { id: 'apply-firewall', label: firewallLabel, status: 'pending' } : null,
     { id: 'refresh', label: 'Обновляю состояние панели', status: 'pending' }
   ].filter(Boolean);
   const setStep = (id, status, label = '') => {

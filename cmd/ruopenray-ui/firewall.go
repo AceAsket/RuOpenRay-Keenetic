@@ -294,15 +294,6 @@ func (s *serverState) firewallStatus() map[string]any {
 	if s.cfg.isKeenetic() {
 		return s.keeneticFirewallStatus()
 	}
-	if s.cfg.isKeenetic() {
-		return map[string]any{
-			"ok":         true,
-			"available":  false,
-			"platform":   s.cfg.Platform,
-			"routerMode": "keenetic-pending",
-			"message":    "KeeneticOS firewall adapter еще не реализован; OpenWrt nftables действия отключены.",
-		}
-	}
 	nftExists := false
 	nftBody := ""
 	if body, err := os.ReadFile(ruOpenRayFirewallNftPath); err == nil {
@@ -549,9 +540,6 @@ func (s *serverState) previewFirewall(payload map[string]any) map[string]any {
 	if s.cfg.isKeenetic() {
 		return s.previewKeeneticFirewall(payload)
 	}
-	if s.cfg.isKeenetic() {
-		return map[string]any{"ok": false, "available": false, "error": "KeeneticOS firewall preview пока не реализован", "status": s.firewallStatus()}
-	}
 	payload = s.expandFirewallGeoPayload(payload)
 	body, meta := rfw.NativeNft(payload)
 	return map[string]any{
@@ -566,9 +554,6 @@ func (s *serverState) previewFirewall(payload map[string]any) map[string]any {
 func (s *serverState) applyFirewall(payload map[string]any) map[string]any {
 	if s.cfg.isKeenetic() {
 		return s.applyKeeneticFirewall(payload)
-	}
-	if s.cfg.isKeenetic() {
-		return map[string]any{"ok": false, "available": false, "error": "KeeneticOS firewall adapter пока не реализован; OpenWrt nftables применение отключено", "status": s.firewallStatus()}
 	}
 	if runtime.GOOS == "windows" || !commandExists("nft") {
 		return map[string]any{"ok": false, "available": false, "error": "nftables недоступен на этой системе"}
@@ -629,9 +614,6 @@ func (s *serverState) restoreFirewallSnapshot(payload map[string]any) map[string
 			return s.applyKeeneticFirewall(status)
 		}
 		return s.disableKeeneticFirewall()
-	}
-	if s.cfg.isKeenetic() {
-		return map[string]any{"ok": false, "available": false, "error": "KeeneticOS firewall restore пока не реализован", "status": s.firewallStatus()}
 	}
 	rawSnapshot := payload
 	if nested, ok := payload["snapshot"].(map[string]any); ok {
@@ -694,9 +676,6 @@ func (s *serverState) restoreFirewallSnapshot(payload map[string]any) map[string
 func (s *serverState) disableFirewall() map[string]any {
 	if s.cfg.isKeenetic() {
 		return s.disableKeeneticFirewall()
-	}
-	if s.cfg.isKeenetic() {
-		return map[string]any{"ok": false, "available": false, "error": "KeeneticOS firewall disable пока не реализован", "status": s.firewallStatus()}
 	}
 	steps := []map[string]any{}
 	_ = os.Remove(ruOpenRayFirewallNftPath)

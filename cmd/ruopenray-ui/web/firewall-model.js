@@ -339,6 +339,28 @@ export function createFirewallModel({ state, configInbounds, configOutbounds, ro
     const info = firewallInfo();
     const routeSets = firewallRouteSets();
     const port = info.transparentPort || 52345;
+    if (state.firewallStatus?.platform === 'keenetic') {
+      const selected = firewallSelectedDeviceIps();
+      const deviceMode = (state.firewallDeviceMode === 'selected' || state.firewallDeviceMode === 'exclude') && selected.length ? state.firewallDeviceMode : 'all';
+      const ports = state.firewallPortMode === 'all' ? 'all' : (firewallPorts().join(' ') || '80 443');
+      const blockQuic = state.firewallBlockQuic ? '1' : '0';
+      const shellQuote = (value) => `'${String(value || '').replace(/'/g, `'\\''`)}'`;
+      return [
+        '# Keenetic/Entware iptables hook preview. Author: AceAsket.',
+        'opkg install iptables',
+        'mkdir -p /opt/etc/ndm/netfilter.d /opt/etc/ruopenray-ui',
+        `RUOPENRAY_ROUTER_MODE=${shellQuote(state.firewallRouterMode === 'tproxy' ? 'tproxy' : 'redirect')} \\`,
+        `RUOPENRAY_LAN_IF=${shellQuote(state.firewallStatus?.lanInterface || 'br0')} \\`,
+        `RUOPENRAY_TRANSPARENT_PORT=${shellQuote(port)} \\`,
+        `RUOPENRAY_PORTS=${shellQuote(ports)} \\`,
+        `RUOPENRAY_DEVICE_MODE=${shellQuote(deviceMode)} \\`,
+        `RUOPENRAY_DEVICES=${shellQuote(selected.join(' '))} \\`,
+        `RUOPENRAY_BLOCK_QUIC=${shellQuote(blockQuic)} \\`,
+        'sh /opt/etc/ndm/netfilter.d/90-ruopenray-redirect.sh',
+        '',
+        '# Metadata is saved by RuOpenRay UI to /opt/etc/ruopenray-ui/keenetic-firewall.json.'
+      ].join('\n');
+    }
     const excludedDeviceReturn = state.firewallDeviceMode === 'exclude' ? firewallDeviceExpression().trim() : '';
     const packageCommand = state.firewallRouterMode === 'tproxy'
       ? 'if command -v apk >/dev/null 2>&1; then apk update && apk add kmod-nf-tproxy kmod-nft-tproxy kmod-nft-socket; else opkg update && opkg install kmod-nf-tproxy kmod-nft-tproxy kmod-nft-socket; fi'
@@ -448,6 +470,7 @@ export function createFirewallModel({ state, configInbounds, configOutbounds, ro
     const info = firewallInfo();
     const guard = firewallKillSwitchTargets();
     const routeSets = firewallRouteSets();
+    const isKeenetic = state.firewallStatus?.platform === 'keenetic';
     return {
       routerMode: state.firewallRouterMode,
       bypassMode: state.firewallBypassMode,
@@ -479,7 +502,7 @@ export function createFirewallModel({ state, configInbounds, configOutbounds, ro
       directDomainCount: routeSets.directDomainCount + routeSets.directDynamicIpCount,
       proxyDomainCount: routeSets.proxyDomainCount + routeSets.proxyDynamicIpCount,
       transparentPort: Number(info.transparentPort || 52345),
-      lanInterface: 'br-lan'
+      lanInterface: isKeenetic ? (state.firewallStatus?.lanInterface || 'br0') : 'br-lan'
     };
   }
 
@@ -671,16 +694,16 @@ export function createFirewallModel({ state, configInbounds, configOutbounds, ro
     const reasons = [];
     const routeSets = firewallRouteSets();
     const isKeenetic = status.platform === 'keenetic';
-    if (!status?.active) reasons.push(isKeenetic ? 'Keenetic REDIRECT hook не активен' : 'nftables-таблица не активна');
-    if (!status?.persistent) reasons.push(isKeenetic ? 'Keenetic REDIRECT hook не сохранен в /opt/etc/ndm' : 'правила не сохранены для перезапуска firewall');
+    if (!status?.active) reasons.push(isKeenetic ? 'Keenetic hook не активен' : 'nftables-таблица не активна');
+    if (!status?.persistent) reasons.push(isKeenetic ? 'Keenetic hook не сохранен в /opt/etc/ndm' : 'правила не сохранены для перезапуска firewall');
     const expectedRouterMode = state.firewallRouterMode || (isKeenetic ? 'redirect' : 'tproxy');
     if (status.routerMode && status.routerMode !== expectedRouterMode) {
       reasons.push(`режим: ${routerModeLabel(status.routerMode)} -> ${routerModeLabel(expectedRouterMode)}`);
     }
     if (expectedRouterMode === 'tproxy') {
       if (!status.ipRule) reasons.push('нет policy rule для TPROXY');
-      if (!status.ipRoute) reasons.push('нет route table 100 для TPROXY');
-      if (!status.hotplug) reasons.push('нет hotplug-восстановления policy routing');
+      if (!status.ipRoute) reasons.push(isKeenetic ? 'нет route table 111 для TPROXY' : 'нет route table 100 для TPROXY');
+      if (!status.hotplug) reasons.push(isKeenetic ? 'нет сохраненного Keenetic hook' : 'нет hotplug-восстановления policy routing');
     }
     const expectedBypassMode = state.firewallBypassMode || 'off';
     if (status.bypassMode && status.bypassMode !== expectedBypassMode) {

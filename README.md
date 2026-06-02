@@ -120,6 +120,7 @@ TPROXY: TCP/UDP через mangle TPROXY и route table 111
 ```text
 /opt/etc/ndm/netfilter.d/90-ruopenray-redirect.sh
 /opt/etc/ruopenray-ui/disable-keenetic-redirect.sh
+/opt/etc/ruopenray-ui/keenetic-firewall.json
 ```
 
 Зависимости:
@@ -136,6 +137,16 @@ opkg install iptables
 ```
 
 Панель сама записывает hook, подгружает модули TPROXY и применяет правила. По умолчанию используется LAN-интерфейс `br0` и Xray inbound `transparent_ipv4` на порту `52345`.
+
+Поддерживается ограничение перехвата:
+
+```text
+RUOPENRAY_PORTS='80 443'    # список портов
+RUOPENRAY_PORTS='all'       # все TCP для REDIRECT, TCP/UDP для TPROXY
+RUOPENRAY_DEVICE_MODE=all   # весь LAN
+RUOPENRAY_DEVICE_MODE=selected RUOPENRAY_DEVICES='192.168.1.50'
+RUOPENRAY_DEVICE_MODE=exclude  RUOPENRAY_DEVICES='192.168.1.60'
+```
 
 Ручной запуск REDIRECT:
 

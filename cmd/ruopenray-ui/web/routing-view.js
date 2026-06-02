@@ -642,15 +642,15 @@ function firewallPanel() {
     <details class="panel intercept-details" data-details-key="intercept-openwrt-commands">
       <summary>
         <span>
-          <strong>Команды для OpenWrt</strong>
-          <em>Активные или будущие правила nftables/TProxy для ручной проверки.</em>
+          <strong>${state.firewallStatus?.platform === 'keenetic' ? 'Команды Keenetic' : 'Команды OpenWrt'}</strong>
+          <em>${state.firewallStatus?.platform === 'keenetic' ? 'Активный или будущий Entware/iptables hook для ручной проверки.' : 'Активные или будущие правила nftables/TProxy для ручной проверки.'}</em>
         </span>
         <b>Открыть</b>
       </summary>
       <div class="intercept-details-body">
     <section class="panel intercept-command-panel">
       <div class="panel-title">
-        <div><h2>Команды OpenWrt</h2><span>Если статус ниже говорит «Применено сейчас», это уже активные правила на роутере. Иначе это черновик для следующего применения.</span></div>
+        <div><h2>${state.firewallStatus?.platform === 'keenetic' ? 'Команды Keenetic' : 'Команды OpenWrt'}</h2><span>Если статус ниже говорит «Применено сейчас», это уже активные правила на роутере. Иначе это черновик для следующего применения.</span></div>
         <button class="btn secondary" data-action="copyFirewall">Скопировать</button>
       </div>
       ${firewallCommandsStatusView()}
@@ -858,7 +858,7 @@ function firewallCommandsStatusView() {
     return `
       <div class="settings-warning compact ok">
         <strong>Применено сейчас</strong>
-        <span>Активная таблица nftables и сохраненный файл совпадают с выбранными настройками.</span>
+        <span>${state.firewallStatus?.platform === 'keenetic' ? 'Активный hook и сохраненные метаданные совпадают с выбранными настройками.' : 'Активная таблица nftables и сохраненный файл совпадают с выбранными настройками.'}</span>
       </div>
     `;
   }
@@ -873,7 +873,7 @@ function firewallCommandsStatusView() {
   return `
     <div class="settings-warning compact">
       <strong>Еще не применено</strong>
-      <span>Ниже показан черновик команд, которые RuOpenRay сохранит и применит на OpenWrt.</span>
+      <span>${state.firewallStatus?.platform === 'keenetic' ? 'Ниже показан черновик команд, которые RuOpenRay сохранит в Entware и применит через iptables.' : 'Ниже показан черновик команд, которые RuOpenRay сохранит и применит на OpenWrt.'}</span>
     </div>
   `;
 }
@@ -1061,10 +1061,16 @@ function firewallApplyPanel() {
     ? active ? 'hook активен' : 'hook не активен'
     : active ? 'таблица активна' : 'таблица не активна';
   const rulesPath = isKeenetic ? (status.hookPath || '/opt/etc/ndm/netfilter.d/90-ruopenray-redirect.sh') : (status.nftPath || '/etc/nftables.d/ruopenray.nft');
-  const routeLabel = isKeenetic ? 'QUIC' : 'TPROXY route';
-  const routeState = isKeenetic ? (status.blockQuic ? 'UDP/443 блокируется' : 'UDP/443 не блокируется') : (tproxyReady ? 'готово' : 'нужно восстановить');
+  const routeLabel = isKeenetic && status.routerMode !== 'tproxy' ? 'QUIC' : 'TPROXY route';
+  const routeState = isKeenetic
+    ? status.routerMode === 'tproxy'
+      ? (tproxyReady ? 'готово' : 'нужно восстановить')
+      : (status.blockQuic ? 'UDP/443 блокируется' : 'UDP/443 не блокируется')
+    : (tproxyReady ? 'готово' : 'нужно восстановить');
   const routeDetail = isKeenetic
-    ? `iptables: ${status.iptablesPath || 'не найден'} · LAN: ${status.lanInterface || 'br0'}`
+    ? status.routerMode === 'tproxy'
+      ? `table 111 · ip rule: ${status.ipRule ? 'есть' : 'нет'} · route: ${status.ipRoute ? 'есть' : 'нет'}`
+      : `iptables: ${status.iptablesPath || 'не найден'} · LAN: ${status.lanInterface || 'br0'}`
     : `ip rule: ${status.ipRule ? 'есть' : 'нет'} · route: ${status.ipRoute ? 'есть' : 'нет'} · hotplug: ${status.hotplug ? 'есть' : 'нет'}`;
   const moduleLabel = isKeenetic ? 'TPROXY' : 'Модули';
   const moduleState = isKeenetic
@@ -1085,7 +1091,7 @@ function firewallApplyPanel() {
   return `
     <section class="panel firewall-preview-panel intercept-apply-panel">
       <div class="panel-title">
-        <div><h2>Применение</h2><span>${isKeenetic ? 'Сохраняет Keenetic REDIRECT hook и применяет iptables-цепочки.' : 'Сохраняет nftables и, для TPROXY, policy routing после перезапуска firewall.'}</span></div>
+        <div><h2>Применение</h2><span>${isKeenetic ? 'Сохраняет Keenetic hook и применяет iptables-цепочки; для TPROXY также восстанавливает table 111.' : 'Сохраняет nftables и, для TPROXY, policy routing после перезапуска firewall.'}</span></div>
         <div class="split-actions">
           <button class="btn secondary" data-action="refreshFirewallStatus" ${state.firewallSaving ? 'disabled' : ''}>Обновить</button>
           <button class="btn secondary" data-action="downloadFirewallRules" ${state.firewallSaving ? 'disabled' : ''}>Скачать правила</button>
@@ -1111,7 +1117,7 @@ function firewallApplyPanel() {
         <pre class="mini-console">${escapeHtml(firewallCommands())}</pre>
       </details>
       ${!available ? `<div class="settings-warning"><strong>Недоступно</strong><span>${escapeHtml(isKeenetic ? 'iptables не найден. Установите Entware-пакет: opkg install iptables.' : 'nftables не найден. Постоянный перехват можно применить только на OpenWrt с firewall4/nft.')}</span></div>` : ''}
-      ${status.needsPolicyFix ? `<div class="settings-warning"><strong>TPROXY</strong><span>nft-таблица есть, но policy routing неполный. Нажмите «Применить перехват», чтобы восстановить ip rule, route и hotplug.</span></div>` : ''}
+      ${status.needsPolicyFix ? `<div class="settings-warning"><strong>TPROXY</strong><span>${escapeHtml(isKeenetic ? 'iptables hook активен, но policy routing неполный. Нажмите «Применить изменения», чтобы восстановить ip rule и route table 111.' : 'nft-таблица есть, но policy routing неполный. Нажмите «Применить перехват», чтобы восстановить ip rule, route и hotplug.')}</span></div>` : ''}
     </section>
   `;
 }

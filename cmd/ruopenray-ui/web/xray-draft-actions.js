@@ -262,7 +262,9 @@ export function createXrayDraftActions({
 
   async function copyFirewallCommands() {
     await navigator.clipboard.writeText(firewallCommands());
-    state.message = 'Команды OpenWrt скопированы в буфер обмена';
+    state.message = state.firewallStatus?.platform === 'keenetic'
+      ? 'Команды Keenetic скопированы в буфер обмена'
+      : 'Команды OpenWrt скопированы в буфер обмена';
     render();
   }
 

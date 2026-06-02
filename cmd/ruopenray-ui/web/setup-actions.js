@@ -135,7 +135,7 @@ export function createSetupActions({
       const firewall = await applyFirewallWithRetry(3);
       state.firewallStatus = firewall.status || state.firewallStatus || firewall;
       const firewallOk = Boolean(firewall.ok && firewallReadyStatus(state.firewallStatus));
-      const firewallStepTitle = state.firewallStatus?.platform === 'keenetic' ? 'Keenetic REDIRECT hook' : 'nftables и policy routing';
+      const firewallStepTitle = state.firewallStatus?.platform === 'keenetic' ? 'Keenetic hook и policy routing' : 'nftables и policy routing';
       pushStep(firewallOk, firewallStepTitle, state.firewallStatus?.routerMode || firewall.status?.routerMode || state.firewallRouterMode);
       if (!firewallOk) throw new Error(firewall.error || 'Не удалось включить перехват');
 
@@ -187,8 +187,8 @@ export function createSetupActions({
 
       const firewall = await request('/api/firewall/restore', { method: 'POST', body: JSON.stringify({ snapshot: snapshot.firewall || {} }) });
       state.firewallStatus = firewall.status || firewall;
-      pushStep(Boolean(firewall.ok), 'Возврат nftables', state.firewallStatus?.routerMode || '');
-      if (!firewall.ok) throw new Error(firewall.error || 'Не удалось вернуть nftables');
+      pushStep(Boolean(firewall.ok), state.firewallStatus?.platform === 'keenetic' ? 'Возврат Keenetic hook' : 'Возврат nftables', state.firewallStatus?.routerMode || '');
+      if (!firewall.ok) throw new Error(firewall.error || (state.firewallStatus?.platform === 'keenetic' ? 'Не удалось вернуть Keenetic hook' : 'Не удалось вернуть nftables'));
 
       clearSetupSnapshot();
       state.message = 'Откат мастера выполнен';

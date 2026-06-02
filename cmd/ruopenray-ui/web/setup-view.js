@@ -276,7 +276,7 @@ function setupWizardStepBody(readiness, diskFree, snapshot, result, rollback) {
     const isKeenetic = state.firewallStatus?.platform === 'keenetic';
     return `<section class="setup-step-panel">
       <h3>Перехват трафика</h3>
-      <p>${isKeenetic ? 'Firewall-часть включает Keenetic REDIRECT hook: TCP 80/443 уйдет в Xray, UDP/443 можно блокировать для отключения QUIC.' : 'Firewall-часть решает, какой LAN-трафик попадет в Xray. Перед применением смотрите preview правил nftables, особенно если ограничиваете клиентов или выбираете все порты.'}</p>
+      <p>${isKeenetic ? 'Firewall-часть включает Keenetic hook: REDIRECT для TCP или TPROXY для TCP/UDP, с выбранными клиентами и портами.' : 'Firewall-часть решает, какой LAN-трафик попадет в Xray. Перед применением смотрите preview правил nftables, особенно если ограничиваете клиентов или выбираете все порты.'}</p>
       <div class="setup-choice-grid compact">
         <article><span>Политика</span><strong>${escapeHtml(String(state.firewallBypassMode || 'off').toUpperCase())}</strong><small>Определяет, что отсекать до попадания трафика в Xray.</small></article>
         <article><span>Режим</span><strong>${escapeHtml(String(fwMode).toUpperCase())}</strong><small>TPROXY работает с TCP/UDP. REDIRECT проще, но только для TCP.</small></article>

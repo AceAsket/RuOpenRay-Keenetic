@@ -124,6 +124,53 @@ func TestParseKeeneticTProxyStatusPieces(t *testing.T) {
 	}
 }
 
+func TestParseKeeneticAllPortsAndDeviceScope(t *testing.T) {
+	prerouting := `-P PREROUTING ACCEPT
+-A PREROUTING -i br0 -s 192.168.1.50 -p udp -j RUOPENRAY_TPROXY
+-A PREROUTING -i br0 -s 192.168.1.50 -p tcp -j RUOPENRAY_TPROXY`
+	if !parseKeeneticAllPorts(prerouting) {
+		t.Fatalf("all-port prerouting was not detected")
+	}
+	mode, devices := parseKeeneticDeviceScope(prerouting, "")
+	if mode != "selected" {
+		t.Fatalf("device mode = %q, want selected", mode)
+	}
+	if !reflect.DeepEqual(devices, []string{"192.168.1.50"}) {
+		t.Fatalf("devices = %#v, want [192.168.1.50]", devices)
+	}
+}
+
+func TestParseKeeneticExcludeDeviceScope(t *testing.T) {
+	chain := `-N RUOPENRAY
+-A RUOPENRAY -d 10.0.0.0/8 -j RETURN
+-A RUOPENRAY -s 192.168.1.60 -j RETURN
+-A RUOPENRAY -p tcp -j REDIRECT --to-ports 52345`
+	mode, devices := parseKeeneticDeviceScope("", chain)
+	if mode != "exclude" {
+		t.Fatalf("device mode = %q, want exclude", mode)
+	}
+	if !reflect.DeepEqual(devices, []string{"192.168.1.60"}) {
+		t.Fatalf("devices = %#v, want [192.168.1.60]", devices)
+	}
+}
+
+func TestKeeneticFirewallMetaNormalizesScope(t *testing.T) {
+	meta := keeneticFirewallMeta(map[string]any{
+		"deviceMode": []any{},
+		"portMode":   "all",
+		"devices":    []any{"192.168.1.70"},
+	}, "tproxy", "br0", 52345, []string{"all"}, false)
+	if meta["portMode"] != "all" {
+		t.Fatalf("portMode = %#v, want all", meta["portMode"])
+	}
+	if !reflect.DeepEqual(meta["ports"], []string{}) {
+		t.Fatalf("ports = %#v, want empty list", meta["ports"])
+	}
+	if meta["deviceMode"] != "all" {
+		t.Fatalf("deviceMode = %#v, want all for invalid payload mode", meta["deviceMode"])
+	}
+}
+
 func TestExpandFirewallGeoPayloadAddsGeoTargets(t *testing.T) {
 	geoDir := t.TempDir()
 	writeFirewallGeoFixture(t, geoDir)

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -13,6 +14,7 @@ import (
 const (
 	keeneticRedirectHookPath    = "/opt/etc/ndm/netfilter.d/90-ruopenray-redirect.sh"
 	keeneticRedirectDisablePath = "/opt/etc/ruopenray-ui/disable-keenetic-redirect.sh"
+	keeneticFirewallMetaPath    = "/opt/etc/ruopenray-ui/keenetic-firewall.json"
 )
 
 const keeneticRedirectHookScript = `#!/bin/sh
@@ -30,6 +32,8 @@ BLOCK_QUIC="${RUOPENRAY_BLOCK_QUIC:-1}"
 TPROXY_MARK="${RUOPENRAY_TPROXY_MARK:-0x111}"
 TPROXY_TABLE="${RUOPENRAY_TPROXY_TABLE:-111}"
 PORTS="${RUOPENRAY_PORTS:-80 443}"
+DEVICE_MODE="${RUOPENRAY_DEVICE_MODE:-all}"
+DEVICES="${RUOPENRAY_DEVICES:-}"
 
 load_tproxy_modules() {
   KVER="$(uname -r)"
@@ -88,6 +92,50 @@ add_private_returns() {
   "$IPT" -t "$table" -A "$chain" -d 224.0.0.0/4 -j RETURN
 }
 
+add_device_returns() {
+  table="$1"
+  chain="$2"
+  [ "$DEVICE_MODE" = "exclude" ] || return 0
+  for source in $DEVICES; do
+    [ -n "$source" ] || continue
+    "$IPT" -t "$table" -A "$chain" -s "$source" -j RETURN
+  done
+}
+
+add_prerouting_jump() {
+  table="$1"
+  proto="$2"
+  dport="$3"
+  target="$4"
+  if [ "$DEVICE_MODE" = "selected" ]; then
+    for source in $DEVICES; do
+      [ -n "$source" ] || continue
+      if [ -n "$dport" ]; then
+        "$IPT" -t "$table" -I PREROUTING 1 -i "$LAN_IF" -s "$source" -p "$proto" --dport "$dport" -j "$target"
+      else
+        "$IPT" -t "$table" -I PREROUTING 1 -i "$LAN_IF" -s "$source" -p "$proto" -j "$target"
+      fi
+    done
+    return 0
+  fi
+  if [ -n "$dport" ]; then
+    "$IPT" -t "$table" -I PREROUTING 1 -i "$LAN_IF" -p "$proto" --dport "$dport" -j "$target"
+  else
+    "$IPT" -t "$table" -I PREROUTING 1 -i "$LAN_IF" -p "$proto" -j "$target"
+  fi
+}
+
+add_forward_quic_jump() {
+  if [ "$DEVICE_MODE" = "selected" ]; then
+    for source in $DEVICES; do
+      [ -n "$source" ] || continue
+      "$IPT" -t filter -I FORWARD 1 -i "$LAN_IF" -s "$source" -p udp --dport 443 -j "$QUIC_CHAIN"
+    done
+    return 0
+  fi
+  "$IPT" -t filter -I FORWARD 1 -i "$LAN_IF" -p udp --dport 443 -j "$QUIC_CHAIN"
+}
+
 cleanup
 
 if [ "$MODE" = "tproxy" ]; then
@@ -96,6 +144,7 @@ if [ "$MODE" = "tproxy" ]; then
   ip rule add fwmark "$TPROXY_MARK" lookup "$TPROXY_TABLE" 2>/dev/null || true
   "$IPT" -t mangle -N "$TPROXY_CHAIN"
   add_private_returns mangle "$TPROXY_CHAIN"
+  add_device_returns mangle "$TPROXY_CHAIN"
   "$IPT" -t mangle -A "$TPROXY_CHAIN" -p tcp -m socket --transparent -j MARK --set-mark "$TPROXY_MARK"
   "$IPT" -t mangle -A "$TPROXY_CHAIN" -p udp -m socket --transparent -j MARK --set-mark "$TPROXY_MARK"
   "$IPT" -t mangle -A "$TPROXY_CHAIN" -p tcp -m mark ! --mark 0 -j CONNMARK --save-mark
@@ -103,23 +152,24 @@ if [ "$MODE" = "tproxy" ]; then
   "$IPT" -t mangle -A "$TPROXY_CHAIN" -p tcp -j TPROXY --on-ip 127.0.0.1 --on-port "$PORT" --tproxy-mark "$TPROXY_MARK"
   "$IPT" -t mangle -A "$TPROXY_CHAIN" -p udp -j TPROXY --on-ip 127.0.0.1 --on-port "$PORT" --tproxy-mark "$TPROXY_MARK"
   if [ "$PORTS" = "all" ]; then
-    "$IPT" -t mangle -I PREROUTING 1 -i "$LAN_IF" -p udp -j "$TPROXY_CHAIN"
-    "$IPT" -t mangle -I PREROUTING 1 -i "$LAN_IF" -p tcp -j "$TPROXY_CHAIN"
+    add_prerouting_jump mangle udp "" "$TPROXY_CHAIN"
+    add_prerouting_jump mangle tcp "" "$TPROXY_CHAIN"
   else
     for item in $PORTS; do
-      "$IPT" -t mangle -I PREROUTING 1 -i "$LAN_IF" -p udp --dport "$item" -j "$TPROXY_CHAIN"
-      "$IPT" -t mangle -I PREROUTING 1 -i "$LAN_IF" -p tcp --dport "$item" -j "$TPROXY_CHAIN"
+      add_prerouting_jump mangle udp "$item" "$TPROXY_CHAIN"
+      add_prerouting_jump mangle tcp "$item" "$TPROXY_CHAIN"
     done
   fi
 else
   "$IPT" -t nat -N "$CHAIN"
   add_private_returns nat "$CHAIN"
+  add_device_returns nat "$CHAIN"
   "$IPT" -t nat -A "$CHAIN" -p tcp -j REDIRECT --to-ports "$PORT"
   if [ "$PORTS" = "all" ]; then
-    "$IPT" -t nat -I PREROUTING 1 -i "$LAN_IF" -p tcp -j "$CHAIN"
+    add_prerouting_jump nat tcp "" "$CHAIN"
   else
     for item in $PORTS; do
-      "$IPT" -t nat -I PREROUTING 1 -i "$LAN_IF" -p tcp --dport "$item" -j "$CHAIN"
+      add_prerouting_jump nat tcp "$item" "$CHAIN"
     done
   fi
 fi
@@ -127,8 +177,9 @@ fi
 if [ "$BLOCK_QUIC" = "1" ]; then
   "$IPT" -t filter -N "$QUIC_CHAIN"
   add_private_returns filter "$QUIC_CHAIN"
+  add_device_returns filter "$QUIC_CHAIN"
   "$IPT" -t filter -A "$QUIC_CHAIN" -p udp -j REJECT
-  "$IPT" -t filter -I FORWARD 1 -i "$LAN_IF" -p udp --dport 443 -j "$QUIC_CHAIN"
+  add_forward_quic_jump
 fi
 `
 
@@ -304,6 +355,18 @@ func parseKeeneticRedirectPorts(prerouting string) []string {
 	return ports
 }
 
+func parseKeeneticAllPorts(prerouting string) bool {
+	for _, line := range strings.Split(prerouting, "\n") {
+		if !strings.Contains(line, "-j RUOPENRAY") || strings.Contains(line, "--dport ") {
+			continue
+		}
+		if strings.Contains(line, " -p tcp ") || strings.Contains(line, " -p udp ") {
+			return true
+		}
+	}
+	return false
+}
+
 func parseKeeneticLANInterface(prerouting string) string {
 	for _, line := range strings.Split(prerouting, "\n") {
 		if !strings.Contains(line, "-j RUOPENRAY") || !strings.Contains(line, " -i ") {
@@ -319,6 +382,61 @@ func parseKeeneticLANInterface(prerouting string) string {
 	return "br0"
 }
 
+func parseKeeneticSources(text string) []string {
+	seen := map[string]bool{}
+	sources := []string{}
+	for _, line := range strings.Split(text, "\n") {
+		if !strings.Contains(line, " -s ") {
+			continue
+		}
+		parts := strings.Fields(line)
+		for index, part := range parts {
+			if part == "-s" && index+1 < len(parts) {
+				source := strings.TrimSpace(parts[index+1])
+				if source != "" && !seen[source] {
+					seen[source] = true
+					sources = append(sources, source)
+				}
+			}
+		}
+	}
+	return sources
+}
+
+func parseKeeneticDeviceScope(prerouting string, chain string) (string, []string) {
+	unique := func(items []string) []string {
+		seen := map[string]bool{}
+		out := []string{}
+		for _, item := range items {
+			item = strings.TrimSpace(item)
+			if item != "" && !seen[item] {
+				seen[item] = true
+				out = append(out, item)
+			}
+		}
+		return out
+	}
+	excluded := []string{}
+	for _, line := range strings.Split(chain, "\n") {
+		if strings.Contains(line, " -s ") && strings.Contains(line, " -j RETURN") {
+			excluded = append(excluded, parseKeeneticSources(line)...)
+		}
+	}
+	if len(excluded) > 0 {
+		return "exclude", unique(excluded)
+	}
+	selected := []string{}
+	for _, line := range strings.Split(prerouting, "\n") {
+		if strings.Contains(line, "-j RUOPENRAY") && strings.Contains(line, " -s ") {
+			selected = append(selected, parseKeeneticSources(line)...)
+		}
+	}
+	if len(selected) > 0 {
+		return "selected", unique(selected)
+	}
+	return "all", []string{}
+}
+
 func keeneticFirewallPorts(payload map[string]any) []string {
 	if fmt.Sprint(payload["portMode"]) == "all" {
 		return []string{"all"}
@@ -330,6 +448,21 @@ func keeneticFirewallPorts(payload map[string]any) []string {
 	return ports
 }
 
+func keeneticFirewallPortMode(payload map[string]any, ports []string) string {
+	if fmt.Sprint(payload["portMode"]) == "all" || (len(ports) == 1 && ports[0] == "all") {
+		return "all"
+	}
+	return "custom"
+}
+
+func keeneticFirewallDeviceMode(payload map[string]any, devices []string) string {
+	mode := strings.TrimSpace(fmt.Sprint(payload["deviceMode"]))
+	if (mode == "selected" || mode == "exclude") && len(devices) > 0 {
+		return mode
+	}
+	return "all"
+}
+
 func keeneticPortsEnvValue(ports []string) string {
 	if len(ports) == 1 && ports[0] == "all" {
 		return "all"
@@ -337,7 +470,7 @@ func keeneticPortsEnvValue(ports []string) string {
 	return strings.Join(ports, " ")
 }
 
-func keeneticScriptEnv(routerMode string, lanInterface string, transparentPort int, ports []string, blockQuic bool) string {
+func keeneticScriptEnv(routerMode string, lanInterface string, transparentPort int, ports []string, blockQuic bool, deviceMode string, devices []string) string {
 	block := "0"
 	if blockQuic {
 		block = "1"
@@ -349,7 +482,54 @@ func keeneticScriptEnv(routerMode string, lanInterface string, transparentPort i
 		" RUOPENRAY_LAN_IF=" + singleQuote(lanInterface) +
 		" RUOPENRAY_TRANSPARENT_PORT=" + singleQuote(strconv.Itoa(transparentPort)) +
 		" RUOPENRAY_PORTS=" + singleQuote(keeneticPortsEnvValue(ports)) +
+		" RUOPENRAY_DEVICE_MODE=" + singleQuote(deviceMode) +
+		" RUOPENRAY_DEVICES=" + singleQuote(strings.Join(devices, " ")) +
 		" RUOPENRAY_BLOCK_QUIC=" + singleQuote(block)
+}
+
+func keeneticFirewallMeta(payload map[string]any, routerMode string, lanInterface string, transparentPort int, ports []string, blockQuic bool) map[string]any {
+	devices := stringList(payload["devices"])
+	deviceMode := keeneticFirewallDeviceMode(payload, devices)
+	portMode := keeneticFirewallPortMode(payload, ports)
+	if portMode == "all" {
+		ports = []string{}
+	}
+	return map[string]any{
+		"routerMode":      routerMode,
+		"bypassMode":      "off",
+		"deviceMode":      deviceMode,
+		"devices":         devices,
+		"portMode":        portMode,
+		"ports":           ports,
+		"transparentPort": transparentPort,
+		"lanInterface":    lanInterface,
+		"blockQuic":       blockQuic,
+		"dnsIntercept":    false,
+	}
+}
+
+func readKeeneticFirewallMeta() map[string]any {
+	body, err := os.ReadFile(keeneticFirewallMetaPath)
+	if err != nil {
+		return map[string]any{}
+	}
+	meta := map[string]any{}
+	if err := json.Unmarshal(body, &meta); err != nil {
+		return map[string]any{}
+	}
+	return meta
+}
+
+func writeKeeneticFirewallMeta(meta map[string]any) error {
+	if err := os.MkdirAll(filepath.Dir(keeneticFirewallMetaPath), 0o755); err != nil {
+		return err
+	}
+	body, err := json.MarshalIndent(meta, "", "  ")
+	if err != nil {
+		return err
+	}
+	body = append(body, '\n')
+	return os.WriteFile(keeneticFirewallMetaPath, body, 0o644)
 }
 
 func writeExecutableFile(path string, body string) error {
@@ -388,8 +568,6 @@ func (s *serverState) keeneticFirewallStatus() map[string]any {
 	filterForwardText := fmt.Sprint(filterForward["stdout"])
 	redirectActive := natChain["ok"] == true &&
 		strings.Contains(natChainText, "REDIRECT") &&
-		strings.Contains(natPreroutingText, "--dport 80") &&
-		strings.Contains(natPreroutingText, "--dport 443") &&
 		strings.Contains(natPreroutingText, "-j RUOPENRAY")
 	tproxyActive := mangleChain["ok"] == true &&
 		strings.Contains(mangleChainText, "TPROXY") &&
@@ -412,25 +590,62 @@ func (s *serverState) keeneticFirewallStatus() map[string]any {
 	}
 	transparentPort := parseKeeneticRedirectPort(natChainText + "\n" + mangleChainText)
 	ports := parseKeeneticRedirectPorts(natPreroutingText)
+	portMode := "custom"
+	if parseKeeneticAllPorts(natPreroutingText) {
+		portMode = "all"
+		ports = []string{}
+	}
 	if tproxyActive {
 		ports = parseKeeneticRedirectPorts(manglePreroutingText)
+		portMode = "custom"
+		if parseKeeneticAllPorts(manglePreroutingText) {
+			portMode = "all"
+			ports = []string{}
+		}
 	}
 	routerMode := "redirect"
 	if tproxyActive {
 		routerMode = "tproxy"
 	}
+	deviceMode, devices := parseKeeneticDeviceScope(natPreroutingText, natChainText)
+	if tproxyActive {
+		deviceMode, devices = parseKeeneticDeviceScope(manglePreroutingText, mangleChainText)
+	}
 	ipRulesText := fmt.Sprint(ipRules["stdout"])
 	ipRoutesText := fmt.Sprint(ipRoutes["stdout"])
 	ipRuleActive := strings.Contains(ipRulesText, "fwmark 0x111") && strings.Contains(ipRulesText, "lookup 111")
 	ipRouteActive := strings.Contains(ipRoutesText, "local") && strings.Contains(ipRoutesText, "dev lo")
+	meta := readKeeneticFirewallMeta()
+	if value := strings.TrimSpace(fmt.Sprint(meta["routerMode"])); !active && value != "" && value != "<nil>" {
+		routerMode = value
+	}
+	if value := strings.TrimSpace(fmt.Sprint(meta["lanInterface"])); value != "" && value != "<nil>" {
+		lanInterface = value
+	}
+	if value := int(numberAny(meta["transparentPort"])); value > 0 && value < 65536 {
+		transparentPort = value
+	}
+	if value := strings.TrimSpace(fmt.Sprint(meta["portMode"])); value == "all" || value == "custom" {
+		portMode = value
+		if value == "all" {
+			ports = []string{}
+		} else if metaPorts := stringList(meta["ports"]); len(metaPorts) > 0 {
+			ports = metaPorts
+		}
+	}
+	if value := strings.TrimSpace(fmt.Sprint(meta["deviceMode"])); value == "selected" || value == "exclude" || value == "all" {
+		deviceMode = value
+		devices = stringList(meta["devices"])
+	}
 	status := map[string]any{
 		"ok":              true,
 		"available":       available,
 		"platform":        s.cfg.Platform,
 		"routerMode":      routerMode,
 		"bypassMode":      "off",
-		"deviceMode":      "all",
-		"portMode":        "custom",
+		"deviceMode":      deviceMode,
+		"devices":         devices,
+		"portMode":        portMode,
 		"ports":           ports,
 		"transparentPort": transparentPort,
 		"lanInterface":    lanInterface,
@@ -441,6 +656,7 @@ func (s *serverState) keeneticFirewallStatus() map[string]any {
 		"hotplug":         persistent,
 		"hookPath":        keeneticRedirectHookPath,
 		"disablePath":     keeneticRedirectDisablePath,
+		"metaPath":        keeneticFirewallMetaPath,
 		"disableScript":   disableScript,
 		"iptablesPath":    iptables,
 		"ipRule":          routerMode != "tproxy" || ipRuleActive,
@@ -484,27 +700,20 @@ func (s *serverState) previewKeeneticFirewall(payload map[string]any) map[string
 	}
 	blockQuic := boolPayload(payload, "blockQuic", true)
 	ports := keeneticFirewallPorts(payload)
-	env := keeneticScriptEnv(routerMode, lanInterface, transparentPort, ports, blockQuic)
+	meta := keeneticFirewallMeta(payload, routerMode, lanInterface, transparentPort, ports, blockQuic)
+	devices := stringList(meta["devices"])
+	env := keeneticScriptEnv(routerMode, lanInterface, transparentPort, ports, blockQuic, fmt.Sprint(meta["deviceMode"]), devices)
 	preview := strings.Join([]string{
 		"opkg install iptables",
 		"mkdir -p /opt/etc/ndm/netfilter.d /opt/etc/ruopenray-ui",
 		"install -m 0755 keenetic-redirect.sh " + keeneticRedirectHookPath,
 		"install -m 0755 keenetic-disable-redirect.sh " + keeneticRedirectDisablePath,
+		"install -m 0644 keenetic-firewall.json " + keeneticFirewallMetaPath,
 		env + " " + keeneticRedirectHookPath,
 	}, "\n")
 	return map[string]any{
-		"ok": true,
-		"meta": map[string]any{
-			"routerMode":      routerMode,
-			"bypassMode":      "off",
-			"deviceMode":      "all",
-			"portMode":        fmt.Sprint(payload["portMode"]),
-			"ports":           ports,
-			"transparentPort": transparentPort,
-			"lanInterface":    lanInterface,
-			"blockQuic":       blockQuic,
-			"dnsIntercept":    false,
-		},
+		"ok":      true,
+		"meta":    meta,
 		"nft":     preview,
 		"preview": preview,
 		"status":  s.firewallStatus(),
@@ -538,13 +747,18 @@ func (s *serverState) applyKeeneticFirewall(payload map[string]any) map[string]a
 	}
 	blockQuic := boolPayload(payload, "blockQuic", true)
 	ports := keeneticFirewallPorts(payload)
+	meta := keeneticFirewallMeta(payload, routerMode, lanInterface, transparentPort, ports, blockQuic)
 	if err := writeExecutableFile(keeneticRedirectHookPath, keeneticRedirectHookScript); err != nil {
 		return map[string]any{"ok": false, "error": err.Error(), "status": s.firewallStatus()}
 	}
 	if err := writeExecutableFile(keeneticRedirectDisablePath, keeneticRedirectDisableScript); err != nil {
 		return map[string]any{"ok": false, "error": err.Error(), "status": s.firewallStatus()}
 	}
-	step := runTimeout(15*time.Second, "sh", "-c", keeneticScriptEnv(routerMode, lanInterface, transparentPort, ports, blockQuic)+" "+singleQuote(keeneticRedirectHookPath))
+	if err := writeKeeneticFirewallMeta(meta); err != nil {
+		return map[string]any{"ok": false, "error": err.Error(), "status": s.firewallStatus()}
+	}
+	devices := stringList(meta["devices"])
+	step := runTimeout(15*time.Second, "sh", "-c", keeneticScriptEnv(routerMode, lanInterface, transparentPort, ports, blockQuic, fmt.Sprint(meta["deviceMode"]), devices)+" "+singleQuote(keeneticRedirectHookPath))
 	status := s.firewallStatus()
 	ok := step["ok"] == true && status["active"] == true && status["persistent"] == true && status["routerMode"] == routerMode
 	if routerMode == "tproxy" {
@@ -557,17 +771,7 @@ func (s *serverState) applyKeeneticFirewall(payload map[string]any) map[string]a
 		"ok":     ok,
 		"steps":  []map[string]any{step},
 		"status": status,
-		"meta": map[string]any{
-			"routerMode":      routerMode,
-			"bypassMode":      "off",
-			"deviceMode":      "all",
-			"portMode":        fmt.Sprint(payload["portMode"]),
-			"ports":           ports,
-			"transparentPort": transparentPort,
-			"lanInterface":    lanInterface,
-			"blockQuic":       blockQuic,
-			"dnsIntercept":    false,
-		},
+		"meta":   meta,
 	}
 }
 
@@ -578,6 +782,7 @@ func (s *serverState) disableKeeneticFirewall() map[string]any {
 	_ = writeExecutableFile(keeneticRedirectDisablePath, keeneticRedirectDisableScript)
 	step := runTimeout(15*time.Second, "sh", "-c", "RUOPENRAY_LAN_IF='br0' "+singleQuote(keeneticRedirectDisablePath))
 	_ = os.Remove(keeneticRedirectHookPath)
+	_ = os.Remove(keeneticFirewallMetaPath)
 	status := s.firewallStatus()
 	return map[string]any{"ok": step["ok"] == true && status["active"] != true && status["persistent"] != true, "steps": []map[string]any{step}, "status": status}
 }

@@ -16,6 +16,7 @@ export function createSetupModel({
     const transparent = firewallInfo();
     const dnsReadiness = lanDns.readiness || {};
     const proxyCount = proxyOutbounds().length;
+    const isKeenetic = firewall.platform === 'keenetic';
     const firewallMatchesSelection = typeof firewallReadyStatus === 'function'
       ? firewallReadyStatus(firewall)
       : Boolean(firewall.active && firewall.persistent && !firewall.needsPolicyFix);
@@ -54,12 +55,12 @@ export function createSetupModel({
         key: 'firewall',
         ok: firewallMatchesSelection,
         warn: Boolean(firewall.active),
-        title: 'Защита nftables',
+        title: isKeenetic ? 'Keenetic hook' : 'Защита nftables',
         detail: firewall.active && !firewallMatchesSelection
-          ? 'nftables активен, но примененная схема отличается от выбранной сейчас.'
+          ? (isKeenetic ? 'Keenetic hook активен, но примененная схема отличается от выбранной сейчас.' : 'nftables активен, но примененная схема отличается от выбранной сейчас.')
           : firewall.active
           ? `${firewall.routerMode || state.firewallRouterMode} · ${firewall.persistent ? 'сохранен' : 'только до перезапуска'}`
-          : 'Нужно применить nftables и правила маршрутизации RuOpenRay.'
+          : (isKeenetic ? 'Нужно применить Keenetic hook и правила маршрутизации RuOpenRay.' : 'Нужно применить nftables и правила маршрутизации RuOpenRay.')
       },
       {
         key: 'dns',

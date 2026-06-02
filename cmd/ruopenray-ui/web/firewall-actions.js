@@ -98,6 +98,7 @@ export function createFirewallActions({
       });
       state.firewallGeoExpansion = preview?.geoExpansion || null;
       const status = preview.status || await request('/api/firewall/status').catch(() => null);
+      const isKeenetic = status?.platform === 'keenetic';
       const report = [
         'RuOpenRay UI firewall report',
         `Generated: ${new Date().toISOString()}`,
@@ -105,17 +106,23 @@ export function createFirewallActions({
         '== UI payload ==',
         JSON.stringify(payload, null, 2),
         '',
-        '== Generated nftables ==',
+        isKeenetic ? '== Generated Keenetic hook preview ==' : '== Generated nftables ==',
         preview.nft || '',
         '',
-        '== Active nftables on router ==',
-        status?.nft?.stdout || 'not available',
+        isKeenetic ? '== Active iptables on router ==' : '== Active nftables on router ==',
+        isKeenetic
+          ? [
+              status?.iptables?.natPrerouting?.stdout || '',
+              status?.iptables?.manglePrerouting?.stdout || '',
+              status?.iptables?.filterForward?.stdout || ''
+            ].filter(Boolean).join('\n') || 'not available'
+          : status?.nft?.stdout || 'not available',
         '',
         '== Policy routing ==',
         '-- ip rule show --',
         status?.ipRules?.stdout || 'not available',
         '',
-        '-- ip route show table 100 --',
+        isKeenetic ? '-- ip route show table 111 --' : '-- ip route show table 100 --',
         status?.ipRoutes?.stdout || 'not available',
         '',
         '== Firewall status ==',
