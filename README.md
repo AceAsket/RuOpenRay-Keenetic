@@ -83,7 +83,7 @@ RUOPENRAY_BINARY_URL='https://example.com/ruopenray-ui-linux-arm64' sh -c "$(wge
 Конкретный релиз панели:
 
 ```sh
-RUOPENRAY_VERSION='v0.1.0-keenetic.8' sh -c "$(wget -O - https://raw.githubusercontent.com/AceAsket/RuOpenRay-Keenetic/main/scripts/install-keenetic.sh)"
+RUOPENRAY_VERSION='v0.1.0-keenetic.10' sh -c "$(wget -O - https://raw.githubusercontent.com/AceAsket/RuOpenRay-Keenetic/main/scripts/install-keenetic.sh)"
 ```
 
 ## Xray-core
