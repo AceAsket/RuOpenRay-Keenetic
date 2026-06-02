@@ -26,6 +26,8 @@ OPKG component: installed
 OPKG disk: storage:/
 ```
 
+Current release asset target: `ruopenray-ui-linux-arm64` only.
+
 The built-in Keenetic SSH service exposes the Keenetic CLI, not an Entware shell. Router-side installation requires Entware to be deployed first so that `/opt`, `opkg`, and `/opt/etc/init.d/` are available from a shell session.
 
 ## Target Layout

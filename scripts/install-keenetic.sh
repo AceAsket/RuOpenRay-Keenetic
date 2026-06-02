@@ -46,12 +46,8 @@ detect_entware() {
 detect_arch() {
 	uname_arch="$(uname -m)"
 	case "$uname_arch" in
-		x86_64) ASSET_NAME="ruopenray-ui-linux-amd64" ;;
 		aarch64|arm64) ASSET_NAME="ruopenray-ui-linux-arm64" ;;
-		armv7*|armv7l) ASSET_NAME="ruopenray-ui-linux-armv7" ;;
-		mipsel|mipsle) ASSET_NAME="ruopenray-ui-linux-mipsle-softfloat" ;;
-		mips) ASSET_NAME="ruopenray-ui-linux-mips-softfloat" ;;
-		*) die "unsupported architecture: $uname_arch" ;;
+		*) die "unsupported architecture: $uname_arch; RuOpenRay Keenetic currently publishes only ruopenray-ui-linux-arm64" ;;
 	esac
 	log "Architecture: $uname_arch -> $ASSET_NAME"
 }

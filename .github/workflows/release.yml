@@ -16,23 +16,8 @@ jobs:
       matrix:
         include:
           - goos: linux
-            goarch: amd64
-            asset: ruopenray-ui-linux-amd64
-          - goos: linux
             goarch: arm64
             asset: ruopenray-ui-linux-arm64
-          - goos: linux
-            goarch: arm
-            goarm: "7"
-            asset: ruopenray-ui-linux-armv7
-          - goos: linux
-            goarch: mipsle
-            gomips: softfloat
-            asset: ruopenray-ui-linux-mipsle-softfloat
-          - goos: linux
-            goarch: mips
-            gomips: softfloat
-            asset: ruopenray-ui-linux-mips-softfloat
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -49,8 +34,6 @@ jobs:
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
-          GOARM: ${{ matrix.goarm }}
-          GOMIPS: ${{ matrix.gomips }}
           CGO_ENABLED: "0"
         run: |
           mkdir -p dist
