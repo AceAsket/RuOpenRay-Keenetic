@@ -180,14 +180,13 @@ start() {
 		echo "$PROG is not executable" >&2
 		return 1
 	}
-	nohup "$PROG" >>"$LOG_FILE" 2>&1 &
-	echo "$!" > "$PID_FILE"
+	start-stop-daemon -S -b -m -p "$PID_FILE" -x "$PROG" -O "$LOG_FILE"
 	echo "$NAME started"
 }
 
 stop() {
 	if is_running; then
-		kill "$(cat "$PID_FILE")" 2>/dev/null || true
+		start-stop-daemon -K -p "$PID_FILE" 2>/dev/null || kill "$(cat "$PID_FILE")" 2>/dev/null || true
 		sleep 1
 	fi
 	rm -f "$PID_FILE"
@@ -255,14 +254,13 @@ start() {
 		echo "$CONFIG not found; open RuOpenRay UI once to create config" >&2
 		return 1
 	}
-	nohup "$PROG" run -config "$CONFIG" >>"$LOG_FILE" 2>&1 &
-	echo "$!" > "$PID_FILE"
+	start-stop-daemon -S -b -m -p "$PID_FILE" -x "$PROG" -O "$LOG_FILE" -- run -config "$CONFIG"
 	echo "$NAME started"
 }
 
 stop() {
 	if is_running; then
-		kill "$(cat "$PID_FILE")" 2>/dev/null || true
+		start-stop-daemon -K -p "$PID_FILE" 2>/dev/null || kill "$(cat "$PID_FILE")" 2>/dev/null || true
 		sleep 1
 	fi
 	rm -f "$PID_FILE"
