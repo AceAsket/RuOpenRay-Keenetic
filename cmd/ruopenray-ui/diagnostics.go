@@ -18,16 +18,16 @@ func (s *serverState) diagnostics() map[string]any {
 	return map[string]any{
 		"ok": true,
 		"app": map[string]any{
-			"version": appVersion,
-			"asset":   ruOpenRayAssetName(),
-			"binary":  os.Args[0],
+			"version":  appVersion,
+			"asset":    ruOpenRayAssetName(),
+			"binary":   os.Args[0],
 			"platform": s.cfg.Platform,
 		},
 		"router": map[string]any{
 			"platform": s.cfg.Platform,
-			"release": firstLine(readFileString("/etc/openwrt_release"), ""),
+			"release":  firstLine(readFileString("/etc/openwrt_release"), ""),
 			"keenetic": firstLine(readFileString("/etc/ndm/firmware"), ""),
-			"manager": firstNonEmpty(commandName("apk"), commandName("opkg"), "не найден"),
+			"manager":  firstNonEmpty(commandName("apk"), commandName("opkg"), "не найден"),
 		},
 		"service": map[string]any{
 			"ruopenray": runTimeout(5*time.Second, s.cfg.appServiceScript(), "status"),

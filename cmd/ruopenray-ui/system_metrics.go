@@ -1,4 +1,4 @@
-﻿package main
+package main
 
 import (
 	"context"
@@ -25,9 +25,9 @@ func (s *serverState) status(w http.ResponseWriter) {
 	profiles, _ := s.listProfiles()
 	writeJSON(w, 200, map[string]any{
 		"app": map[string]any{
-			"version": appVersion,
-			"asset":   ruOpenRayAssetName(),
-			"arch":    systemArchitecture("github-release"),
+			"version":  appVersion,
+			"asset":    ruOpenRayAssetName(),
+			"arch":     systemArchitecture("github-release"),
 			"platform": s.cfg.Platform,
 		},
 		"service": service,

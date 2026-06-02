@@ -1,4 +1,4 @@
-﻿package main
+package main
 
 import (
 	"fmt"
@@ -293,11 +293,11 @@ func sameStringSet(left, right []string) bool {
 func (s *serverState) firewallStatus() map[string]any {
 	if s.cfg.isKeenetic() {
 		return map[string]any{
-			"ok": true,
-			"available": false,
-			"platform": s.cfg.Platform,
+			"ok":         true,
+			"available":  false,
+			"platform":   s.cfg.Platform,
 			"routerMode": "keenetic-pending",
-			"message": "KeeneticOS firewall adapter еще не реализован; OpenWrt nftables действия отключены.",
+			"message":    "KeeneticOS firewall adapter еще не реализован; OpenWrt nftables действия отключены.",
 		}
 	}
 	nftExists := false

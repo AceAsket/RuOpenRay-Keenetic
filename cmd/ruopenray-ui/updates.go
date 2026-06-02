@@ -275,11 +275,11 @@ func (s *serverState) updateCore(version string, keepBackup bool) map[string]any
 	}
 	if s.cfg.isKeenetic() {
 		return map[string]any{
-			"ok": false,
+			"ok":             false,
 			"packageManager": "opkg",
-			"before": before,
-			"stderr": "На Keenetic установка Xray через opkg пока не используется. Выберите версию Xray-core из релизов GitHub.",
-			"arch": systemArchitecture("opkg"),
+			"before":         before,
+			"stderr":         "На Keenetic установка Xray через opkg пока не используется. Выберите версию Xray-core из релизов GitHub.",
+			"arch":           systemArchitecture("opkg"),
 		}
 	}
 
