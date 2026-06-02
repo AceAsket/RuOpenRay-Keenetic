@@ -292,6 +292,9 @@ func sameStringSet(left, right []string) bool {
 
 func (s *serverState) firewallStatus() map[string]any {
 	if s.cfg.isKeenetic() {
+		return s.keeneticFirewallStatus()
+	}
+	if s.cfg.isKeenetic() {
 		return map[string]any{
 			"ok":         true,
 			"available":  false,
@@ -510,6 +513,22 @@ func parseFirewallTransparentPort(nftBody string) int {
 
 func (s *serverState) firewallSnapshot() map[string]any {
 	status := s.firewallStatus()
+	if s.cfg.isKeenetic() {
+		hookBody := ""
+		if body, err := os.ReadFile(keeneticRedirectHookPath); err == nil {
+			hookBody = string(body)
+		}
+		disableBody := ""
+		if body, err := os.ReadFile(keeneticRedirectDisablePath); err == nil {
+			disableBody = string(body)
+		}
+		return map[string]any{
+			"ok":          true,
+			"status":      status,
+			"hookBody":    hookBody,
+			"disableBody": disableBody,
+		}
+	}
 	nftBody := ""
 	if body, err := os.ReadFile(ruOpenRayFirewallNftPath); err == nil {
 		nftBody = string(body)
@@ -528,6 +547,9 @@ func (s *serverState) firewallSnapshot() map[string]any {
 
 func (s *serverState) previewFirewall(payload map[string]any) map[string]any {
 	if s.cfg.isKeenetic() {
+		return s.previewKeeneticFirewall(payload)
+	}
+	if s.cfg.isKeenetic() {
 		return map[string]any{"ok": false, "available": false, "error": "KeeneticOS firewall preview пока не реализован", "status": s.firewallStatus()}
 	}
 	payload = s.expandFirewallGeoPayload(payload)
@@ -542,6 +564,9 @@ func (s *serverState) previewFirewall(payload map[string]any) map[string]any {
 }
 
 func (s *serverState) applyFirewall(payload map[string]any) map[string]any {
+	if s.cfg.isKeenetic() {
+		return s.applyKeeneticFirewall(payload)
+	}
 	if s.cfg.isKeenetic() {
 		return map[string]any{"ok": false, "available": false, "error": "KeeneticOS firewall adapter пока не реализован; OpenWrt nftables применение отключено", "status": s.firewallStatus()}
 	}
@@ -594,6 +619,17 @@ func (s *serverState) applyFirewall(payload map[string]any) map[string]any {
 }
 
 func (s *serverState) restoreFirewallSnapshot(payload map[string]any) map[string]any {
+	if s.cfg.isKeenetic() {
+		rawSnapshot := payload
+		if nested, ok := payload["snapshot"].(map[string]any); ok {
+			rawSnapshot = nested
+		}
+		status, _ := rawSnapshot["status"].(map[string]any)
+		if status["active"] == true || status["persistent"] == true || strings.TrimSpace(fmt.Sprint(rawSnapshot["hookBody"])) != "" {
+			return s.applyKeeneticFirewall(status)
+		}
+		return s.disableKeeneticFirewall()
+	}
 	if s.cfg.isKeenetic() {
 		return map[string]any{"ok": false, "available": false, "error": "KeeneticOS firewall restore пока не реализован", "status": s.firewallStatus()}
 	}
@@ -656,6 +692,9 @@ func (s *serverState) restoreFirewallSnapshot(payload map[string]any) map[string
 }
 
 func (s *serverState) disableFirewall() map[string]any {
+	if s.cfg.isKeenetic() {
+		return s.disableKeeneticFirewall()
+	}
 	if s.cfg.isKeenetic() {
 		return map[string]any{"ok": false, "available": false, "error": "KeeneticOS firewall disable пока не реализован", "status": s.firewallStatus()}
 	}

@@ -15,7 +15,12 @@ func (s *serverState) installPlan() map[string]any {
 	} else if commandExists("opkg") {
 		manager = "opkg"
 	}
-	tproxyModules := tproxyModuleStatus(manager)
+	tproxyManager := manager
+	if s.cfg.isKeenetic() {
+		manager = "entware-opkg"
+		tproxyManager = "keenetic"
+	}
+	tproxyModules := tproxyModuleStatus(tproxyManager)
 	coreVersion := runTimeout(5*time.Second, "xray", "version")
 	geo := s.geoStatus()
 	geoip := mapValue(geo["geoip"])
@@ -54,12 +59,12 @@ func (s *serverState) installPlan() map[string]any {
 		"recommendedMode": "Экономный режим: без резервных копий, компактный geosite/geoip, удаление лишних dat",
 	}
 	steps := []map[string]any{
-		{"id": "manager", "title": "Пакетный менеджер", "ok": manager == "apk" || manager == "opkg", "detail": manager},
+		{"id": "manager", "title": "Пакетный менеджер", "ok": manager == "apk" || manager == "opkg" || manager == "entware-opkg", "detail": manager},
 		{"id": "arch", "title": "Архитектура", "ok": true, "detail": fmt.Sprint(systemArchitecture("github-release")["uname"]) + " / " + xrayAssetName()},
 		{"id": "space", "title": "Свободное место", "ok": storage["leanOk"], "detail": fmt.Sprintf("%s свободно · нужно от %s", byteCount(free), byteCount(leanRequired))},
 		{"id": "xray", "title": "Xray-core", "ok": coreVersion["ok"] == true, "detail": firstLine(fmt.Sprint(coreVersion["stdout"]), "не найден")},
 		{"id": "geo", "title": "Geo-файлы", "ok": geoip["exists"] == true && geosite["exists"] == true, "detail": fmt.Sprintf("geoip.dat: %v · geosite.dat: %v", geoip["exists"], geosite["exists"])},
-		{"id": "tproxy", "title": "TPROXY-модули", "ok": tproxyModules["ok"], "detail": tproxyModules["detail"]},
+		{"id": "tproxy", "title": "TPROXY/REDIRECT", "ok": tproxyModules["ok"] == true || s.cfg.isKeenetic(), "detail": tproxyModules["detail"]},
 		{"id": "nand", "title": "Экономия места", "ok": storage["leanOk"], "detail": fmt.Sprintf("экономный режим: %s, полный geo: %s", byteCount(leanRequired), byteCount(fullRequired))},
 		{"id": "service", "title": "Сервис", "ok": true, "detail": s.cfg.serviceScript(s.cfg.ServiceName)},
 	}
@@ -73,7 +78,7 @@ func (s *serverState) installPlan() map[string]any {
 		"disk":           disk,
 		"storage":        storage,
 		"steps":          steps,
-		"installable":    (manager == "apk" || manager == "opkg") && runtime.GOOS != "windows",
+		"installable":    (manager == "apk" || manager == "opkg" || manager == "entware-opkg") && runtime.GOOS != "windows",
 	}
 }
 

@@ -117,6 +117,9 @@ func packageArchitecture(manager string) string {
 
 func tproxyModuleStatus(manager string) map[string]any {
 	required := []string{"kmod-nf-tproxy", "kmod-nft-tproxy", "kmod-nft-socket"}
+	if manager == "keenetic" || manager == "entware-opkg" {
+		return keeneticTPROXYTargetStatus()
+	}
 	if runtime.GOOS == "windows" {
 		return map[string]any{
 			"ok":        true,

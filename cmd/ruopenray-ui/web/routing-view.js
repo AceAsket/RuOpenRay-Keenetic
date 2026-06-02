@@ -1055,6 +1055,21 @@ function firewallApplyPanel() {
   const persistent = Boolean(status.persistent);
   const tproxyReady = status.routerMode !== 'tproxy' || (status.ipRule && status.ipRoute && status.hotplug);
   const available = status.available !== false;
+  const isKeenetic = status.platform === 'keenetic';
+  const rulesLabel = isKeenetic ? 'Keenetic hook' : 'nftables';
+  const rulesState = isKeenetic
+    ? active ? 'hook активен' : 'hook не активен'
+    : active ? 'таблица активна' : 'таблица не активна';
+  const rulesPath = isKeenetic ? (status.hookPath || '/opt/etc/ndm/netfilter.d/90-ruopenray-redirect.sh') : (status.nftPath || '/etc/nftables.d/ruopenray.nft');
+  const routeLabel = isKeenetic ? 'QUIC' : 'TPROXY route';
+  const routeState = isKeenetic ? (status.blockQuic ? 'UDP/443 блокируется' : 'UDP/443 не блокируется') : (tproxyReady ? 'готово' : 'нужно восстановить');
+  const routeDetail = isKeenetic
+    ? `iptables: ${status.iptablesPath || 'не найден'} · LAN: ${status.lanInterface || 'br0'}`
+    : `ip rule: ${status.ipRule ? 'есть' : 'нет'} · route: ${status.ipRoute ? 'есть' : 'нет'} · hotplug: ${status.hotplug ? 'есть' : 'нет'}`;
+  const moduleLabel = isKeenetic ? 'TPROXY' : 'Модули';
+  const moduleState = isKeenetic ? 'REDIRECT режим' : (status.tproxyModules?.ok === false ? 'не все установлены' : 'готово');
+  const previewTitle = isKeenetic ? 'Preview Keenetic hook' : 'Preview nftables';
+  const previewDetail = isKeenetic ? 'Что будет сохранено в /opt/etc/ndm и применено через iptables.' : 'Что будет сохранено и применено на OpenWrt.';
   const matchesSelection = typeof firewallReadyStatus === 'function' ? firewallReadyStatus(status) : true;
   const safety = typeof firewallSafetyCheck === 'function' ? firewallSafetyCheck() : { level: 'safe', items: [], hasDanger: false };
   const blockedBySafety = Boolean(safety.hasDanger && !state.firewallSafetyAccepted);
@@ -1068,7 +1083,7 @@ function firewallApplyPanel() {
   return `
     <section class="panel firewall-preview-panel intercept-apply-panel">
       <div class="panel-title">
-        <div><h2>Применение</h2><span>Сохраняет nftables и, для TPROXY, policy routing после перезапуска firewall.</span></div>
+        <div><h2>Применение</h2><span>${isKeenetic ? 'Сохраняет Keenetic REDIRECT hook и применяет iptables-цепочки.' : 'Сохраняет nftables и, для TPROXY, policy routing после перезапуска firewall.'}</span></div>
         <div class="split-actions">
           <button class="btn secondary" data-action="refreshFirewallStatus" ${state.firewallSaving ? 'disabled' : ''}>Обновить</button>
           <button class="btn secondary" data-action="downloadFirewallRules" ${state.firewallSaving ? 'disabled' : ''}>Скачать правила</button>
@@ -1081,19 +1096,19 @@ function firewallApplyPanel() {
       ${firewallSafetyPanel(safety, blockedBySafety)}
       <div class="firewall-preview-grid">
         <article><span>Состояние</span><strong>${escapeHtml(summary)}</strong><small>${escapeHtml(status.routerMode || state.firewallRouterMode)}</small></article>
-        <article><span>nftables</span><strong>${escapeHtml(active ? 'таблица активна' : 'таблица не активна')}</strong><small>${escapeHtml(status.nftPath || '/etc/nftables.d/ruopenray.nft')}</small></article>
-        <article><span>TPROXY route</span><strong>${escapeHtml(tproxyReady ? 'готово' : 'нужно восстановить')}</strong><small>${escapeHtml(`ip rule: ${status.ipRule ? 'есть' : 'нет'} · route: ${status.ipRoute ? 'есть' : 'нет'} · hotplug: ${status.hotplug ? 'есть' : 'нет'}`)}</small></article>
-        <article><span>Модули</span><strong>${escapeHtml(status.tproxyModules?.ok === false ? 'не все установлены' : 'готово')}</strong><small>${escapeHtml(status.tproxyModules?.detail || 'проверяется на роутере')}</small></article>
+        <article><span>${escapeHtml(rulesLabel)}</span><strong>${escapeHtml(rulesState)}</strong><small>${escapeHtml(rulesPath)}</small></article>
+        <article><span>${escapeHtml(routeLabel)}</span><strong>${escapeHtml(routeState)}</strong><small>${escapeHtml(routeDetail)}</small></article>
+        <article><span>${escapeHtml(moduleLabel)}</span><strong>${escapeHtml(moduleState)}</strong><small>${escapeHtml(status.tproxyModules?.detail || 'проверяется на роутере')}</small></article>
         <article><span>Домены защиты</span><strong>${escapeHtml(status.killSwitchDNSBlock?.active ? `${status.killSwitchDNSBlock.count || 0} DNS` : status.killSwitchNftset?.active ? `${status.killSwitchNftset.count || 0} nftset` : 'не заданы')}</strong><small>${escapeHtml(status.killSwitchDNSBlock?.active ? 'dnsmasq address' : (status.killSwitchNftset?.set || 'inet ruopenray killswitch4'))}</small></article>
       </div>
       <details class="intercept-details compact" data-details-key="firewall-preview-nft">
         <summary>
-          <span><strong>Preview nftables</strong><em>Что будет сохранено и применено на OpenWrt.</em></span>
+          <span><strong>${escapeHtml(previewTitle)}</strong><em>${escapeHtml(previewDetail)}</em></span>
           <b>Открыть</b>
         </summary>
         <pre class="mini-console">${escapeHtml(firewallCommands())}</pre>
       </details>
-      ${!available ? `<div class="settings-warning"><strong>Недоступно</strong><span>nftables не найден. Постоянный перехват можно применить только на OpenWrt с firewall4/nft.</span></div>` : ''}
+      ${!available ? `<div class="settings-warning"><strong>Недоступно</strong><span>${escapeHtml(isKeenetic ? 'iptables не найден. Установите Entware-пакет: opkg install iptables.' : 'nftables не найден. Постоянный перехват можно применить только на OpenWrt с firewall4/nft.')}</span></div>` : ''}
       ${status.needsPolicyFix ? `<div class="settings-warning"><strong>TPROXY</strong><span>nft-таблица есть, но policy routing неполный. Нажмите «Применить перехват», чтобы восстановить ip rule, route и hotplug.</span></div>` : ''}
     </section>
   `;

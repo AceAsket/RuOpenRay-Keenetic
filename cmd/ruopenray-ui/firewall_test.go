@@ -86,6 +86,25 @@ func TestParseFirewallPortsFromLegacyBody(t *testing.T) {
 	}
 }
 
+func TestParseKeeneticRedirectStatusPieces(t *testing.T) {
+	natChain := `-N RUOPENRAY
+-A RUOPENRAY -d 10.0.0.0/8 -j RETURN
+-A RUOPENRAY -p tcp -j REDIRECT --to-ports 52345`
+	prerouting := `-P PREROUTING ACCEPT
+-A PREROUTING -i br0 -p tcp -m tcp --dport 80 -j RUOPENRAY
+-A PREROUTING -i br0 -p tcp -m tcp --dport 443 -j RUOPENRAY`
+
+	if got := parseKeeneticRedirectPort(natChain); got != 52345 {
+		t.Fatalf("transparent port = %d, want 52345", got)
+	}
+	if got := parseKeeneticLANInterface(prerouting); got != "br0" {
+		t.Fatalf("LAN interface = %q, want br0", got)
+	}
+	if got := parseKeeneticRedirectPorts(prerouting); !reflect.DeepEqual(got, []string{"80", "443"}) {
+		t.Fatalf("redirect ports = %#v, want [80 443]", got)
+	}
+}
+
 func TestExpandFirewallGeoPayloadAddsGeoTargets(t *testing.T) {
 	geoDir := t.TempDir()
 	writeFirewallGeoFixture(t, geoDir)

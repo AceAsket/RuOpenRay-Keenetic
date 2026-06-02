@@ -135,7 +135,8 @@ export function createSetupActions({
       const firewall = await applyFirewallWithRetry(3);
       state.firewallStatus = firewall.status || state.firewallStatus || firewall;
       const firewallOk = Boolean(firewall.ok && firewallReadyStatus(state.firewallStatus));
-      pushStep(firewallOk, 'nftables и policy routing', state.firewallStatus?.routerMode || firewall.status?.routerMode || state.firewallRouterMode);
+      const firewallStepTitle = state.firewallStatus?.platform === 'keenetic' ? 'Keenetic REDIRECT hook' : 'nftables и policy routing';
+      pushStep(firewallOk, firewallStepTitle, state.firewallStatus?.routerMode || firewall.status?.routerMode || state.firewallRouterMode);
       if (!firewallOk) throw new Error(firewall.error || 'Не удалось включить перехват');
 
       state.message = 'Активный режим RuOpenRay включен';

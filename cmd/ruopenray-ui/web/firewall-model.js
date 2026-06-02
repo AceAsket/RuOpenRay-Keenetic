@@ -618,8 +618,9 @@ export function createFirewallModel({ state, configInbounds, configOutbounds, ro
 
   function firewallReadyStatus(status) {
     if (!status?.active || !status?.persistent) return false;
+    const isKeenetic = status.platform === 'keenetic';
     const routeSets = firewallRouteSets();
-    const expectedRouterMode = state.firewallRouterMode || 'tproxy';
+    const expectedRouterMode = isKeenetic ? 'redirect' : (state.firewallRouterMode || 'tproxy');
     if (status.routerMode && status.routerMode !== expectedRouterMode) return false;
     if (expectedRouterMode === 'tproxy' && (!status.ipRule || !status.ipRoute)) return false;
     if (status.bypassMode && status.bypassMode !== (state.firewallBypassMode || 'off')) return false;
@@ -647,7 +648,7 @@ export function createFirewallModel({ state, configInbounds, configOutbounds, ro
     if ((Array.isArray(status.devices) || firewallSelectedDeviceIps().length) && !sameStringSet(status.devices || [], firewallSelectedDeviceIps())) return false;
     if (status.portMode && status.portMode !== (state.firewallPortMode || 'custom')) return false;
     if (status.portMode === 'custom' && !sameStringSet(status.ports || [], firewallPorts())) return false;
-    if (typeof status.dnsIntercept === 'boolean' && status.dnsIntercept !== Boolean(state.firewallDnsIntercept)) return false;
+    if (!isKeenetic && typeof status.dnsIntercept === 'boolean' && status.dnsIntercept !== Boolean(state.firewallDnsIntercept)) return false;
     if (typeof status.blockQuic === 'boolean' && status.blockQuic !== Boolean(state.firewallBlockQuic)) return false;
     const guard = firewallKillSwitchTargets();
     if (state.firewallKillSwitchEnabled && status.killSwitch !== true) return false;
@@ -669,9 +670,10 @@ export function createFirewallModel({ state, configInbounds, configOutbounds, ro
   function firewallPendingReasons(status = state.firewallStatus || {}) {
     const reasons = [];
     const routeSets = firewallRouteSets();
-    if (!status?.active) reasons.push('nftables-таблица не активна');
-    if (!status?.persistent) reasons.push('правила не сохранены для перезапуска firewall');
-    const expectedRouterMode = state.firewallRouterMode || 'tproxy';
+    const isKeenetic = status.platform === 'keenetic';
+    if (!status?.active) reasons.push(isKeenetic ? 'Keenetic REDIRECT hook не активен' : 'nftables-таблица не активна');
+    if (!status?.persistent) reasons.push(isKeenetic ? 'Keenetic REDIRECT hook не сохранен в /opt/etc/ndm' : 'правила не сохранены для перезапуска firewall');
+    const expectedRouterMode = isKeenetic ? 'redirect' : (state.firewallRouterMode || 'tproxy');
     if (status.routerMode && status.routerMode !== expectedRouterMode) {
       reasons.push(`режим: ${routerModeLabel(status.routerMode)} -> ${routerModeLabel(expectedRouterMode)}`);
     }
@@ -711,7 +713,7 @@ export function createFirewallModel({ state, configInbounds, configOutbounds, ro
     } else if (expectedPortMode === 'custom' && !sameStringSet(status.ports || [], firewallPorts())) {
       reasons.push(`порты: ${stringListLabel(status.ports || [])} -> ${stringListLabel(firewallPorts())}`);
     }
-    if (typeof status.dnsIntercept === 'boolean' && status.dnsIntercept !== Boolean(state.firewallDnsIntercept)) {
+    if (!isKeenetic && typeof status.dnsIntercept === 'boolean' && status.dnsIntercept !== Boolean(state.firewallDnsIntercept)) {
       reasons.push(`DNS-перехват: ${onOffLabel(status.dnsIntercept)} -> ${onOffLabel(state.firewallDnsIntercept)}`);
     }
     if (typeof status.blockQuic === 'boolean' && status.blockQuic !== Boolean(state.firewallBlockQuic)) {
