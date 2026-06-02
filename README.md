@@ -102,14 +102,31 @@ ruopenray.<ваш-домен>.keenetic.pro -> 192.168.1.1:9090
 
 ## Прозрачный режим
 
-Текущий стенд использует TCP REDIRECT для LAN:
+TCP REDIRECT для LAN:
 
 ```text
 /opt/etc/ndm/netfilter.d/90-ruopenray-redirect.sh
 /opt/etc/ruopenray-ui/disable-keenetic-redirect.sh
 ```
 
-REDIRECT направляет TCP `80/443` с LAN-интерфейса `br0` в Xray inbound `transparent_ipv4` на порт `52345`.
+Установка hook:
+
+```sh
+opkg install iptables
+mkdir -p /opt/etc/ndm/netfilter.d /opt/etc/ruopenray-ui
+curl -fsSL https://raw.githubusercontent.com/AceAsket/RuOpenRay-Keenetic/main/scripts/keenetic-redirect.sh -o /opt/etc/ndm/netfilter.d/90-ruopenray-redirect.sh
+curl -fsSL https://raw.githubusercontent.com/AceAsket/RuOpenRay-Keenetic/main/scripts/keenetic-disable-redirect.sh -o /opt/etc/ruopenray-ui/disable-keenetic-redirect.sh
+chmod 0755 /opt/etc/ndm/netfilter.d/90-ruopenray-redirect.sh /opt/etc/ruopenray-ui/disable-keenetic-redirect.sh
+/opt/etc/ndm/netfilter.d/90-ruopenray-redirect.sh
+```
+
+REDIRECT направляет TCP `80/443` с LAN-интерфейса `br0` в Xray inbound `transparent_ipv4` на порт `52345`. UDP `443` отклоняется для отключения QUIC.
+
+Отключение QUIC-блока:
+
+```sh
+RUOPENRAY_BLOCK_QUIC=0 /opt/etc/ndm/netfilter.d/90-ruopenray-redirect.sh
+```
 
 Откат:
 
