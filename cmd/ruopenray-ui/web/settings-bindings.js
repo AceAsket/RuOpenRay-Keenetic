@@ -33,6 +33,7 @@ export function bindSettingsControls({
   });
   document.querySelectorAll('[data-ui-theme]').forEach((button) => {
     button.addEventListener('click', () => {
+      if (button.dataset.uiTheme === 'keenetic') state.mobileNavOpen = true;
       if (typeof setUiTheme === 'function') {
         setUiTheme(button.dataset.uiTheme);
         return;

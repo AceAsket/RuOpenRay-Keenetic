@@ -17,7 +17,7 @@ export function bindNavigationControls({ state, render, configureLogTimer }) {
   document.querySelectorAll('[data-tab]').forEach((button) => {
     button.addEventListener('click', () => {
       state.tab = button.dataset.tab;
-      state.mobileNavOpen = false;
+      if (state.uiTheme !== 'keenetic') state.mobileNavOpen = false;
       finishNavigation();
     });
   });
@@ -26,7 +26,7 @@ export function bindNavigationControls({ state, render, configureLogTimer }) {
       state.tab = button.dataset.tabJump;
       if (button.dataset.routingViewJump) state.routingView = button.dataset.routingViewJump;
       if (button.dataset.diagnosticsJump) state.diagnosticsView = button.dataset.diagnosticsJump;
-      state.mobileNavOpen = false;
+      if (state.uiTheme !== 'keenetic') state.mobileNavOpen = false;
       closeDialogsForNavigation();
       finishNavigation();
     });

@@ -12,7 +12,7 @@ export function createInitialState() {
   token: auth.token,
   uiTheme: loadUiTheme(),
   tab: 'dashboard',
-  mobileNavOpen: false,
+  mobileNavOpen: true,
   status: null,
   profiles: [],
   profileEditorOpen: false,
