@@ -27,6 +27,10 @@ else
 	RELEASE_BASE_URL="${RUOPENRAY_RELEASE_BASE_URL:-https://github.com/AceAsket/RuOpenRay-Keenetic/releases/latest/download}"
 fi
 KEEP_BINARY_BACKUPS="${RUOPENRAY_KEEP_BINARY_BACKUPS:-2}"
+SCENARIOS_URL="${RUOPENRAY_SCENARIOS_URL:-https://raw.githubusercontent.com/AceAsket/RuOpenRay-Keenetic/main/scenarios.json}"
+SCENARIOS_NAME="${RUOPENRAY_SCENARIOS_NAME:-RuOpenRay Keenetic scenarios}"
+INSTALL_SCENARIOS="${RUOPENRAY_INSTALL_SCENARIOS:-1}"
+SCENARIOS_AUTO_UPDATE="${RUOPENRAY_SCENARIOS_AUTO_UPDATE:-0}"
 ENV_FILE="$DATA_DIR/ruopenray-ui.env"
 
 log() {
@@ -288,6 +292,20 @@ EOF
 	chmod 0755 "$INIT_DIR/$XRAY_SERVICE"
 }
 
+install_route_scenarios() {
+	[ "$INSTALL_SCENARIOS" = "1" ] || return 0
+	[ -n "$SCENARIOS_URL" ] || return 0
+	[ -x "$INSTALL_DIR/$APP_NAME" ] || return 0
+	auto_arg="--no-auto-update"
+	if [ "$SCENARIOS_AUTO_UPDATE" = "1" ]; then
+		auto_arg="--auto-update"
+	fi
+	log "Connecting RuOpenRay routing scenarios: $SCENARIOS_URL"
+	if ! RUOPENRAY_PLATFORM='keenetic' RUOPENRAY_DATA_DIR="$DATA_DIR" RUOPENRAY_GEO_DIR="$GEO_DIR" RUOPENRAY_BACKUP_DIR="$BACKUP_DIR" RUOPENRAY_XRAY_SERVICE="$XRAY_SERVICE" "$INSTALL_DIR/$APP_NAME" route-presets add-source "$SCENARIOS_URL" --name "$SCENARIOS_NAME" "$auto_arg" >/tmp/ruopenray-scenarios-install.log 2>&1; then
+		log "Warning: could not load routing scenarios. They can be connected later in the web panel. Log: /tmp/ruopenray-scenarios-install.log"
+	fi
+}
+
 uninstall() {
 	"$INIT_DIR/$APP_SERVICE" stop >/dev/null 2>&1 || true
 	"$INIT_DIR/$XRAY_SERVICE" stop >/dev/null 2>&1 || true
@@ -314,6 +332,7 @@ main() {
 	write_env
 	write_ui_init
 	write_xray_init
+	install_route_scenarios
 	"$INIT_DIR/$APP_SERVICE" restart >/dev/null 2>&1 || "$INIT_DIR/$APP_SERVICE" start >/dev/null 2>&1 || true
 	log "RuOpenRay Keenetic installed."
 	log "Panel: http://192.168.1.1:$PORT/"

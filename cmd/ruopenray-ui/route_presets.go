@@ -20,8 +20,8 @@ const routePresetsLimit = 200
 const routePresetRulesLimit = 1000
 const routePresetSourcesLimit = 20
 const routePresetSourceBodyLimit = 2 * 1024 * 1024
-const defaultRoutePresetSourceURL = "https://raw.githubusercontent.com/AceAsket/RuOpenRay-scenarios/main/scenarios.json"
-const defaultRoutePresetSourceName = "RuOpenRay scenarios"
+const defaultRoutePresetSourceURL = "https://raw.githubusercontent.com/AceAsket/RuOpenRay-Keenetic/main/scenarios.json"
+const defaultRoutePresetSourceName = "RuOpenRay Keenetic scenarios"
 
 var routePresetSourceIDPattern = regexp.MustCompile(`[^a-z0-9_-]+`)
 var routePresetSVGUnsafePattern = regexp.MustCompile(`(?is)<\s*(script|iframe|object|embed|foreignObject|audio|video|canvas|link|meta|style)\b|on[a-z]+\s*=|javascript:`)
