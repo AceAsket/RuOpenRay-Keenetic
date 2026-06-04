@@ -1,4 +1,5 @@
 import { createDiagnosticsDomainView } from './diagnostics-domain-view.js';
+import { createDiagnosticsKeeneticView } from './diagnostics-keenetic-view.js';
 import { createDiagnosticsObservatoryView } from './diagnostics-observatory-view.js';
 import { createDiagnosticsTrafficView } from './diagnostics-traffic-view.js';
 
@@ -19,6 +20,7 @@ export function createDiagnosticsView(deps) {
     diagnosticsDpiView,
     diagnosticsTrafficView
   } = createDiagnosticsTrafficView(deps);
+  const { diagnosticsKeeneticView } = createDiagnosticsKeeneticView(deps);
   const { observatoryPanel } = createDiagnosticsObservatoryView(deps);
 
   function diagnosticsLiveView() {
@@ -45,7 +47,18 @@ export function createDiagnosticsView(deps) {
       sni: sniPanel,
       domains: diagnosticsDomainMonitorView
     };
+    const isKeenetic = state.firewallStatus?.platform === 'keenetic' || state.status?.app?.platform === 'keenetic' || state.lanDnsStatus?.platform === 'keenetic';
+    if (isKeenetic) views.keenetic = diagnosticsKeeneticView;
     const activeView = views[state.diagnosticsView] ? state.diagnosticsView : 'live';
+    const tabs = [
+      ['live', 'Live-Xray'],
+      ['chain', 'Проверка связи'],
+      ['dpi', 'DPI'],
+      ['traffic', 'Трафик'],
+      ['sni', 'SNI'],
+      ['domains', 'Домены']
+    ];
+    if (isKeenetic) tabs.push(['keenetic', 'Keenetic']);
     return `
       <section class="route-hero diagnostics-hero">
         <div>
@@ -60,14 +73,7 @@ export function createDiagnosticsView(deps) {
 
       <section class="panel diagnostic-switcher">
         <div class="segmented diagnostics-tabs" aria-label="Режим диагностики">
-          ${[
-            ['live', 'Live-Xray'],
-            ['chain', 'Проверка связи'],
-            ['dpi', 'DPI'],
-            ['traffic', 'Трафик'],
-            ['sni', 'SNI'],
-            ['domains', 'Домены']
-          ].map(([value, label]) => `<button type="button" class="${activeView === value ? 'active' : ''}" data-diagnostics-view="${value}">${label}</button>`).join('')}
+          ${tabs.map(([value, label]) => `<button type="button" class="${activeView === value ? 'active' : ''}" data-diagnostics-view="${value}">${label}</button>`).join('')}
         </div>
       </section>
 
