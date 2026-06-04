@@ -613,6 +613,46 @@ body[data-theme="keenetic"] .setup-stepper button.active {
   background: rgba(7, 155, 216, 0.12);
 }
 
+body[data-theme="keenetic"] .setup-step-summary {
+  gap: 10px;
+  border: 1px solid #46566b;
+  border-radius: 4px;
+  background: #111927;
+  box-shadow: none;
+}
+
+body[data-theme="keenetic"] .setup-step-summary-head {
+  align-items: flex-start;
+}
+
+body[data-theme="keenetic"] .setup-step-summary-head em {
+  border-color: rgba(7, 155, 216, 0.72);
+  border-radius: 4px;
+  color: #17b5f4;
+  background: rgba(7, 155, 216, 0.12);
+}
+
+body[data-theme="keenetic"] .setup-step-summary strong {
+  color: #e7ebf0;
+  font-weight: 500;
+}
+
+body[data-theme="keenetic"] .setup-step-summary span,
+body[data-theme="keenetic"] .setup-step-summary p {
+  color: #a7b0be;
+}
+
+body[data-theme="keenetic"] .setup-progress {
+  height: 5px;
+  border-radius: 4px;
+  background: #202b3d;
+}
+
+body[data-theme="keenetic"] .setup-progress span {
+  border-radius: 4px;
+  background: #17b5f4;
+}
+
 body[data-theme="keenetic"] .setup-stepper span,
 body[data-theme="keenetic"] .setup-readiness article > span,
 body[data-theme="keenetic"] .setup-result-list article > span,
@@ -667,6 +707,43 @@ body[data-theme="keenetic"] .setup-flow-step.ok {
 body[data-theme="keenetic"] .setup-step-notice,
 body[data-theme="keenetic"] .setup-result {
   border-radius: 4px;
+  background: rgba(240, 177, 76, 0.12);
+}
+
+body[data-theme="keenetic"] .geo-audit-summary {
+  min-height: 34px;
+  padding: 7px 12px;
+  border: 1px solid rgba(3, 130, 90, 0.72);
+  border-radius: 4px;
+  color: #18d687;
+  background: rgba(105, 201, 155, 0.15);
+  font-weight: 500;
+}
+
+body[data-theme="keenetic"] .panel-title .geo-audit-summary {
+  color: #18d687;
+}
+
+body[data-theme="keenetic"] .geo-audit-summary.danger {
+  color: #f0b14c;
+  border-color: rgba(240, 177, 76, 0.72);
+  background: rgba(240, 177, 76, 0.12);
+}
+
+body[data-theme="keenetic"] .geo-doctor-grid article,
+body[data-theme="keenetic"] .geo-audit-list article {
+  border-color: #46566b;
+  border-radius: 4px;
+  background: #202b3d;
+}
+
+body[data-theme="keenetic"] .geo-doctor-grid article.ok {
+  border-color: rgba(3, 130, 90, 0.72);
+  background: rgba(105, 201, 155, 0.12);
+}
+
+body[data-theme="keenetic"] .geo-doctor-grid article.danger {
+  border-color: rgba(240, 177, 76, 0.72);
   background: rgba(240, 177, 76, 0.12);
 }
 
