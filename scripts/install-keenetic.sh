@@ -27,8 +27,8 @@ else
 	RELEASE_BASE_URL="${RUOPENRAY_RELEASE_BASE_URL:-https://github.com/AceAsket/RuOpenRay-Keenetic/releases/latest/download}"
 fi
 KEEP_BINARY_BACKUPS="${RUOPENRAY_KEEP_BINARY_BACKUPS:-2}"
-SCENARIOS_URL="${RUOPENRAY_SCENARIOS_URL:-https://raw.githubusercontent.com/AceAsket/RuOpenRay-Keenetic/main/scenarios.json}"
-SCENARIOS_NAME="${RUOPENRAY_SCENARIOS_NAME:-RuOpenRay Keenetic scenarios}"
+SCENARIOS_URL="${RUOPENRAY_SCENARIOS_URL:-https://raw.githubusercontent.com/AceAsket/RuOpenRay-scenarios/main/scenarios.json}"
+SCENARIOS_NAME="${RUOPENRAY_SCENARIOS_NAME:-RuOpenRay scenarios}"
 INSTALL_SCENARIOS="${RUOPENRAY_INSTALL_SCENARIOS:-1}"
 SCENARIOS_AUTO_UPDATE="${RUOPENRAY_SCENARIOS_AUTO_UPDATE:-0}"
 ENV_FILE="$DATA_DIR/ruopenray-ui.env"
