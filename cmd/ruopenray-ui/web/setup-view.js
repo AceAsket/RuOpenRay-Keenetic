@@ -394,12 +394,9 @@ function setupPage() {
   return `
     <section class="setup-page">
       <div class="setup-page-head">
-        <div class="setup-product-brand">
-          <img class="keenetic-product-mark" src="/assets/ruopenray-keenetic-mark.svg" alt="" />
-          <div>
-            <h2>Мастер настройки RuOpenRay</h2>
-            <p>Пошагово собирает самостоятельный режим: Xray, DNS, серверы, правила, перехват и проверку трафика. Каждый шаг проверяет себя перед переходом дальше.</p>
-          </div>
+        <div>
+          <h2>Мастер настройки RuOpenRay</h2>
+          <p>Пошагово собирает самостоятельный режим: Xray, DNS, серверы, правила, перехват и проверку трафика. Каждый шаг проверяет себя перед переходом дальше.</p>
         </div>
         <div class="split-actions">
           <button class="btn secondary" type="button" data-action="openInstallWizard">Установка Xray</button>
@@ -448,12 +445,9 @@ function installWizardDialog() {
     <div class="modal-backdrop" data-action="closeInstallWizard">
       <section class="modal install-wizard" role="dialog" aria-modal="true" aria-labelledby="installWizardTitle" data-modal>
         <div class="modal-head">
-          <div class="install-product-brand">
-            <img class="keenetic-product-mark" src="/assets/ruopenray-keenetic-mark.svg" alt="" />
-            <div>
-              <h2 id="installWizardTitle">Установка Xray на Keenetic</h2>
-              <p>Проверяем окружение роутера: пакетный менеджер, архитектуру, свободное место, geo-файлы и init-сервис.</p>
-            </div>
+          <div>
+            <h2 id="installWizardTitle">Установка Xray на Keenetic</h2>
+            <p>Проверяем окружение роутера: пакетный менеджер, архитектуру, свободное место, geo-файлы и init-сервис.</p>
           </div>
           <button class="icon-btn" type="button" data-action="closeInstallWizard" aria-label="Закрыть">×</button>
         </div>

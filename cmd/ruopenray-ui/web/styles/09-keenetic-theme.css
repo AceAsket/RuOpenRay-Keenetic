@@ -73,28 +73,6 @@ body[data-theme="keenetic"] .brand-mark {
   box-shadow: none;
 }
 
-body[data-theme="keenetic"] .setup-product-brand,
-body[data-theme="keenetic"] .install-product-brand {
-  display: flex;
-  align-items: flex-start;
-  gap: 14px;
-  min-width: 0;
-}
-
-body[data-theme="keenetic"] .setup-product-brand > div,
-body[data-theme="keenetic"] .install-product-brand > div {
-  min-width: 0;
-}
-
-body[data-theme="keenetic"] .keenetic-product-mark {
-  width: 48px;
-  height: 48px;
-  flex: 0 0 auto;
-  display: block;
-  border-radius: 4px;
-  background: #111927;
-}
-
 body[data-theme="keenetic"] .brand strong {
   color: var(--accent-2);
   font-size: 16px;
@@ -147,6 +125,17 @@ body[data-theme="keenetic"] .nav-icon {
   color: var(--accent-2);
   font-size: 21px;
   line-height: 1;
+}
+
+body[data-theme="keenetic"] .nav-icon svg {
+  width: 22px;
+  height: 22px;
+  display: block;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 body[data-theme="keenetic"] .nav-label,
@@ -605,10 +594,6 @@ body[data-theme="keenetic"] .setup-page-head {
   background: #1b2434;
 }
 
-body[data-theme="keenetic"] .install-wizard .modal-head {
-  align-items: flex-start;
-}
-
 body[data-theme="keenetic"] .setup-page-head h2,
 body[data-theme="keenetic"] .setup-step-panel h3,
 body[data-theme="keenetic"] .setup-flow-guide h3,
@@ -1039,13 +1024,4 @@ body[data-theme="keenetic"].is-login-page .login-remember input {
     display: grid;
   }
 
-  body[data-theme="keenetic"] .setup-product-brand,
-  body[data-theme="keenetic"] .install-product-brand {
-    align-items: center;
-  }
-
-  body[data-theme="keenetic"] .keenetic-product-mark {
-    width: 40px;
-    height: 40px;
-  }
 }

@@ -83,15 +83,15 @@ applyUiTheme();
 
 function navIcon(tab) {
   return ({
-    dashboard: '▦',
-    setup: '◆',
-    servers: '▤',
-    routing: '⇄',
-    dns: '◌',
-    diagnostics: '⌕',
-    profiles: '◉',
-    settings: '⚙'
-  })[tab] || '•';
+    dashboard: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h7v7H4z"></path><path d="M13 4h7v7h-7z"></path><path d="M4 13h7v7H4z"></path><path d="M13 13h7v7h-7z"></path></svg>',
+    setup: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l9 9-9 9-9-9z"></path></svg>',
+    servers: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6h14"></path><path d="M5 12h14"></path><path d="M5 18h14"></path><path d="M7 4h10v4H7z"></path><path d="M7 10h10v4H7z"></path><path d="M7 16h10v4H7z"></path></svg>',
+    routing: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7h11"></path><path d="M15 4l3 3-3 3"></path><path d="M17 17H6"></path><path d="M9 14l-3 3 3 3"></path></svg>',
+    dns: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><circle cx="5" cy="7" r="2"></circle><circle cx="19" cy="7" r="2"></circle><circle cx="12" cy="20" r="2"></circle><path d="M7 8.4l6.5 3"></path><path d="M17 8.4l-6.5 3"></path><path d="M12 15v3"></path></svg>',
+    diagnostics: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="10" r="5"></circle><path d="M14 14l5 5"></path><path d="M10 7v3l2 2"></path></svg>',
+    profiles: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h12v12H5z"></path><path d="M8 8h12v12H8z"></path><path d="M11 12h5"></path><path d="M11 16h4"></path></svg>',
+    settings: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19 12a7.2 7.2 0 0 0-.1-1l2-1.5-2-3.5-2.4 1a7.4 7.4 0 0 0-1.8-1L14.3 3H9.7L9.3 6a7.4 7.4 0 0 0-1.8 1l-2.4-1-2 3.5 2 1.5a7.2 7.2 0 0 0 0 2l-2 1.5 2 3.5 2.4-1a7.4 7.4 0 0 0 1.8 1l.4 3h4.6l.4-3a7.4 7.4 0 0 0 1.8-1l2.4 1 2-3.5-2-1.5c.1-.3.1-.7.1-1z"></path></svg>'
+  })[tab] || '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle></svg>';
 }
 
 function clearAuth() {
@@ -1890,14 +1890,14 @@ function render() {
     <div class="shell">
       <aside class="sidebar ${state.mobileNavOpen ? 'nav-open' : ''}">
         <div class="brand">
-          <img class="brand-mark" src="/assets/ruopenray-keenetic-mark.svg" alt="" />
+          <img class="brand-mark" src="/assets/ruopenray-icon-512.png" alt="" />
           <div><strong>RuOpenRay UI</strong><span>Панель Xray для Keenetic</span></div>
         </div>
         <button class="mobile-menu-toggle" data-action="toggleMobileNav" type="button" aria-expanded="${state.mobileNavOpen ? 'true' : 'false'}" title="${state.mobileNavOpen ? 'Свернуть меню' : 'Развернуть меню'}" aria-label="${state.mobileNavOpen ? 'Свернуть меню' : 'Развернуть меню'}">
           <span>${state.mobileNavOpen ? 'Закрыть меню' : 'Меню'}</span>
         </button>
         <nav class="nav">
-          ${nav.map(([key, title]) => `<button class="${key === state.tab ? 'active' : ''}" data-tab="${key}" title="${escapeHtml(title)}"><span class="nav-icon" aria-hidden="true">${escapeHtml(navIcon(key))}</span><span class="nav-label">${escapeHtml(title)}</span></button>`).join('')}
+          ${nav.map(([key, title]) => `<button class="${key === state.tab ? 'active' : ''}" data-tab="${key}" title="${escapeHtml(title)}"><span class="nav-icon" aria-hidden="true">${navIcon(key)}</span><span class="nav-label">${escapeHtml(title)}</span></button>`).join('')}
         </nav>
         <div class="sidebar-footer">
           <a class="keenetic-link" href="http://192.168.1.1/" target="_blank" rel="noreferrer" title="Открыть Keenetic Web UI" aria-label="Открыть Keenetic Web UI">
