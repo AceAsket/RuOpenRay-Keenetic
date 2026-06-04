@@ -1890,7 +1890,7 @@ function render() {
     <div class="shell">
       <aside class="sidebar ${state.mobileNavOpen ? 'nav-open' : ''}">
         <div class="brand">
-          <img class="brand-mark" src="/assets/ruopenray-icon-512.png" alt="" />
+          <img class="brand-mark" src="/assets/ruopenray-keenetic-mark.svg" alt="" />
           <div><strong>RuOpenRay UI</strong><span>Панель Xray для Keenetic</span></div>
         </div>
         <button class="mobile-menu-toggle" data-action="toggleMobileNav" type="button" aria-expanded="${state.mobileNavOpen ? 'true' : 'false'}" title="${state.mobileNavOpen ? 'Свернуть меню' : 'Развернуть меню'}" aria-label="${state.mobileNavOpen ? 'Свернуть меню' : 'Развернуть меню'}">

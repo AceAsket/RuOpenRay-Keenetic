@@ -13,7 +13,7 @@ export function createLoginView({
       <main class="login">
         <form class="login-card" id="loginForm" action="/api/login" method="post" autocomplete="on">
           <div class="brand" style="margin-bottom: 18px">
-            <img class="brand-mark" src="/assets/ruopenray-icon-512.png" alt="" />
+            <img class="brand-mark" src="/assets/ruopenray-keenetic-mark.svg" alt="" />
             <div><strong>RuOpenRay UI</strong><span>Панель управления Xray</span></div>
           </div>
           <input class="browser-credential-user" id="username" name="username" value="ruopenray" autocomplete="username" tabindex="-1" aria-hidden="true" />
