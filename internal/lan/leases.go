@@ -1,6 +1,8 @@
 package lan
 
 import (
+	"fmt"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -17,6 +19,8 @@ func DHCPLeases(dataDir string) []map[string]any {
 	return []map[string]any{}
 }
 
+var activeNetworkNeighbours = detectActiveNetworkNeighbours
+
 func DHCPLeaseReport(dataDir string) map[string]any {
 	for _, path := range DHCPLeasePaths(dataDir) {
 		body, err := os.ReadFile(path)
@@ -30,6 +34,9 @@ func DHCPLeaseReport(dataDir string) map[string]any {
 	}
 	if leases, ok := keeneticDHCPLeases(); ok {
 		return map[string]any{"ok": true, "source": "ndmc:show ip dhcp bindings", "leases": leases}
+	}
+	if leases, ok := activeNetworkNeighbours(); ok {
+		return map[string]any{"ok": true, "source": "ip neigh show / /proc/net/arp", "leases": leases}
 	}
 	return map[string]any{"ok": true, "source": "", "leases": []map[string]any{}}
 }
@@ -126,6 +133,114 @@ func ParseKeeneticDHCPBindings(content string, now int64) []map[string]any {
 	}
 	flush()
 	return leases
+}
+
+func detectActiveNetworkNeighbours() ([]map[string]any, bool) {
+	leases := []map[string]any{}
+	seen := map[string]bool{}
+	add := func(items []map[string]any) {
+		for _, item := range items {
+			ip := strings.TrimSpace(asString(item["ip"]))
+			mac := strings.ToLower(strings.TrimSpace(asString(item["mac"])))
+			if ip == "" || mac == "" || seen[ip] {
+				continue
+			}
+			seen[ip] = true
+			leases = append(leases, item)
+		}
+	}
+	if output, err := exec.Command("ip", "neigh", "show").Output(); err == nil {
+		add(ParseIPNeighbours(string(output), "ip neigh show"))
+	}
+	if body, err := os.ReadFile("/proc/net/arp"); err == nil {
+		add(ParseProcNetARP(string(body), "/proc/net/arp"))
+	}
+	return leases, len(leases) > 0
+}
+
+func ParseIPNeighbours(content string, source string) []map[string]any {
+	leases := []map[string]any{}
+	for _, line := range strings.Split(content, "\n") {
+		fields := strings.Fields(line)
+		if len(fields) < 5 {
+			continue
+		}
+		ip := fields[0]
+		if parsed := net.ParseIP(ip); parsed == nil || parsed.To4() == nil {
+			continue
+		}
+		mac := ""
+		dev := ""
+		state := fields[len(fields)-1]
+		for index, field := range fields {
+			switch field {
+			case "dev":
+				if index+1 < len(fields) {
+					dev = fields[index+1]
+				}
+			case "lladdr":
+				if index+1 < len(fields) {
+					mac = strings.ToLower(fields[index+1])
+				}
+			}
+		}
+		if mac == "" || mac == "00:00:00:00:00:00" {
+			continue
+		}
+		leases = append(leases, map[string]any{
+			"expires":   "0",
+			"remaining": int64(0),
+			"mac":       mac,
+			"ip":        ip,
+			"name":      "",
+			"interface": dev,
+			"state":     state,
+			"source":    source,
+		})
+	}
+	return leases
+}
+
+func ParseProcNetARP(content string, source string) []map[string]any {
+	leases := []map[string]any{}
+	for index, line := range strings.Split(content, "\n") {
+		if index == 0 {
+			continue
+		}
+		fields := strings.Fields(line)
+		if len(fields) < 6 {
+			continue
+		}
+		ip := fields[0]
+		if parsed := net.ParseIP(ip); parsed == nil || parsed.To4() == nil {
+			continue
+		}
+		mac := strings.ToLower(fields[3])
+		if mac == "" || mac == "00:00:00:00:00:00" {
+			continue
+		}
+		leases = append(leases, map[string]any{
+			"expires":   "0",
+			"remaining": int64(0),
+			"mac":       mac,
+			"ip":        ip,
+			"name":      "",
+			"interface": fields[5],
+			"state":     fields[2],
+			"source":    source,
+		})
+	}
+	return leases
+}
+
+func asString(value any) string {
+	if text, ok := value.(string); ok {
+		return strings.TrimSpace(text)
+	}
+	if value == nil {
+		return ""
+	}
+	return strings.TrimSpace(fmt.Sprint(value))
 }
 
 func firstNonEmpty(values ...string) string {

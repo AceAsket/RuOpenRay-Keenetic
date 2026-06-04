@@ -264,7 +264,7 @@ export function createSettingsActions({
   }
 
   function cleanupStorageBackups() {
-    return cleanupStorage('backups', 'Бэкапы очищены');
+    return cleanupStorage('old-backups', 'Старые бэкапы очищены, последний сохранен');
   }
 
   function cleanupBinaryBackups() {

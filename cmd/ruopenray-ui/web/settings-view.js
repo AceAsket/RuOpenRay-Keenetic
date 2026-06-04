@@ -480,7 +480,7 @@ function settingsPanel() {
           : 'Дополнительных DAT без ссылок в текущей конфигурации не найдено.'}</span>
       </div>
       <div class="toolbar">
-        <button class="btn warning ${state.storageCleaning === 'backups' ? 'is-busy' : ''}" data-action="cleanupStorageBackups" ${state.storageCleaning ? 'disabled' : ''}>${state.storageCleaning === 'backups' ? 'Очищаю...' : 'Очистить резервные копии'}</button>
+        <button class="btn warning ${state.storageCleaning === 'old-backups' ? 'is-busy' : ''}" data-action="cleanupStorageBackups" ${state.storageCleaning ? 'disabled' : ''}>${state.storageCleaning === 'old-backups' ? 'Очищаю...' : 'Очистить старые копии'}</button>
         <button class="btn secondary ${state.storageCleaning === 'binary-backups' ? 'is-busy' : ''}" data-action="cleanupBinaryBackups" ${state.storageCleaning ? 'disabled' : ''}>${state.storageCleaning === 'binary-backups' ? 'Очищаю...' : 'Очистить старые бинарники'}</button>
         <button class="btn secondary ${state.storageCleaning === 'package-cache' ? 'is-busy' : ''}" data-action="cleanupPackageCache" ${state.storageCleaning ? 'disabled' : ''}>${state.storageCleaning === 'package-cache' ? 'Очищаю...' : 'Очистить кэш пакетов'}</button>
         <button class="btn secondary ${state.storageCleaning === 'unused-dat' ? 'is-busy' : ''}" data-action="cleanupUnusedDat" ${state.storageCleaning || !unusedDat.length ? 'disabled' : ''}>${state.storageCleaning === 'unused-dat' ? 'Удаляю...' : 'Удалить неиспользуемые DAT'}</button>

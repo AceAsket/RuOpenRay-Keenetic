@@ -129,6 +129,8 @@ func (s *serverState) cleanupStorage(payload map[string]any) map[string]any {
 	}
 
 	switch target {
+	case "old-backups":
+		addStep("old-backups", cleanupDirectoryContentsKeepNewest(s.cfg.BackupDir, 1, true))
 	case "backups":
 		addStep("backups", cleanupDirectoryContents(s.cfg.BackupDir, true))
 	case "package-cache":
@@ -452,6 +454,63 @@ func cleanupDirectoryContents(path string, requireExisting bool) storageCleanupR
 		}
 		result.Deleted++
 		result.Freed += size
+	}
+	return result
+}
+
+func cleanupDirectoryContentsKeepNewest(path string, keep int, requireExisting bool) storageCleanupResult {
+	result := storageCleanupResult{}
+	clean, err := filepath.Abs(path)
+	if err != nil || unsafeCleanupDir(clean) {
+		result.Errors = append(result.Errors, fmt.Sprintf("%s: небезопасный путь", path))
+		return result
+	}
+	entries, err := os.ReadDir(clean)
+	if err != nil {
+		if os.IsNotExist(err) && !requireExisting {
+			return result
+		}
+		result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", path, err))
+		return result
+	}
+	type cleanupEntry struct {
+		path    string
+		modTime int64
+		size    int64
+	}
+	items := []cleanupEntry{}
+	for _, entry := range entries {
+		target := filepath.Join(clean, entry.Name())
+		info, statErr := entry.Info()
+		if statErr != nil {
+			result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", target, statErr))
+			continue
+		}
+		size := info.Size()
+		if entry.IsDir() {
+			size = pathStats(target).Size
+		}
+		items = append(items, cleanupEntry{path: target, modTime: info.ModTime().UnixNano(), size: size})
+	}
+	sort.Slice(items, func(i, j int) bool {
+		if items[i].modTime == items[j].modTime {
+			return items[i].path > items[j].path
+		}
+		return items[i].modTime > items[j].modTime
+	})
+	if keep < 0 {
+		keep = 0
+	}
+	for index, item := range items {
+		if index < keep {
+			continue
+		}
+		if err := os.RemoveAll(item.path); err != nil {
+			result.Errors = append(result.Errors, fmt.Sprintf("%s: %v", item.path, err))
+			continue
+		}
+		result.Deleted++
+		result.Freed += item.size
 	}
 	return result
 }
