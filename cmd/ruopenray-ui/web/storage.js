@@ -105,7 +105,7 @@ export function normalizeUiTheme(value) {
 }
 
 export function loadUiTheme() {
-  return normalizeUiTheme(globalThis.localStorage?.getItem(uiThemeStorageKey) || 'dark');
+  return normalizeUiTheme(globalThis.localStorage?.getItem(uiThemeStorageKey) || 'keenetic');
 }
 
 export function saveUiTheme(theme) {
