@@ -235,6 +235,13 @@ body[data-theme="keenetic"] .route-preset-group-row,
 body[data-theme="keenetic"] .routing-summary-card,
 body[data-theme="keenetic"] .route-empty-state,
 body[data-theme="keenetic"] .route-advanced summary,
+body[data-theme="keenetic"] .scenario-card,
+body[data-theme="keenetic"] .scenario-card.custom,
+body[data-theme="keenetic"] .scenario-card.installed,
+body[data-theme="keenetic"] .scenario-card.partial,
+body[data-theme="keenetic"] .scenario-source-box,
+body[data-theme="keenetic"] .scenario-source-list article,
+body[data-theme="keenetic"] .scenario-source-preview span,
 body[data-theme="keenetic"] .dsl-preview-stats div,
 body[data-theme="keenetic"] .server-card,
 body[data-theme="keenetic"] .server-flow-option,
@@ -743,6 +750,91 @@ body[data-theme="keenetic"] .geo-doctor-grid article.ok {
 }
 
 body[data-theme="keenetic"] .geo-doctor-grid article.danger {
+  border-color: rgba(240, 177, 76, 0.72);
+  background: rgba(240, 177, 76, 0.12);
+}
+
+body[data-theme="keenetic"] .scenario-card,
+body[data-theme="keenetic"] .scenario-card.custom,
+body[data-theme="keenetic"] .scenario-card.installed,
+body[data-theme="keenetic"] .scenario-card.partial {
+  border-color: #46566b;
+  border-radius: 4px;
+  background: #111927;
+  box-shadow: none;
+}
+
+body[data-theme="keenetic"] .scenario-card:hover {
+  border-color: #079bd8;
+  background: #202b3d;
+}
+
+body[data-theme="keenetic"] .scenario-card.installed {
+  border-color: rgba(3, 130, 90, 0.72);
+  background: #111927;
+}
+
+body[data-theme="keenetic"] .scenario-card.partial {
+  border-color: rgba(240, 177, 76, 0.72);
+  background: #111927;
+}
+
+body[data-theme="keenetic"] .scenario-card strong,
+body[data-theme="keenetic"] .scenario-source-main strong {
+  color: #e7ebf0;
+  font-weight: 500;
+}
+
+body[data-theme="keenetic"] .scenario-card span,
+body[data-theme="keenetic"] .scenario-card small,
+body[data-theme="keenetic"] .scenario-source-box summary span,
+body[data-theme="keenetic"] .scenario-source-main em,
+body[data-theme="keenetic"] .scenario-source-check span,
+body[data-theme="keenetic"] .scenario-source-check li {
+  color: #a7b0be;
+}
+
+body[data-theme="keenetic"] .scenario-section-title {
+  color: #17b5f4;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+body[data-theme="keenetic"] .scenario-source-box,
+body[data-theme="keenetic"] .scenario-source-list article,
+body[data-theme="keenetic"] .scenario-source-preview span {
+  border-color: #46566b;
+  border-radius: 4px;
+  background: #1b2434;
+  box-shadow: none;
+}
+
+body[data-theme="keenetic"] .scenario-source-check {
+  border-color: rgba(3, 130, 90, 0.72);
+  border-radius: 4px;
+  background: rgba(105, 201, 155, 0.12);
+}
+
+body[data-theme="keenetic"] .scenario-source-check.bad {
+  border-color: rgba(255, 104, 79, 0.72);
+  background: rgba(255, 104, 79, 0.12);
+}
+
+body[data-theme="keenetic"] .scenario-source-badge,
+body[data-theme="keenetic"] .scenario-source-badge.source-local,
+body[data-theme="keenetic"] .scenario-source-badge.source-builtin,
+body[data-theme="keenetic"] .scenario-card small,
+body[data-theme="keenetic"] .scenario-install-badge {
+  border: 1px solid rgba(3, 130, 90, 0.72);
+  border-radius: 4px;
+  color: #18d687;
+  background: rgba(105, 201, 155, 0.15);
+  font-weight: 500;
+  text-transform: none;
+}
+
+body[data-theme="keenetic"] .scenario-card.partial .scenario-install-badge {
+  color: #f0b14c;
   border-color: rgba(240, 177, 76, 0.72);
   background: rgba(240, 177, 76, 0.12);
 }
