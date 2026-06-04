@@ -661,6 +661,133 @@ func counterPackets(counter map[string]any) int64 {
 	return numberAny(counter["packets"])
 }
 
+func parseKeeneticNativePolicyLines(text string) []string {
+	lines := []string{}
+	seen := map[string]bool{}
+	for _, line := range strings.Split(text, "\n") {
+		clean := strings.TrimSpace(line)
+		if clean == "" || strings.HasPrefix(clean, "#") {
+			continue
+		}
+		lower := strings.ToLower(clean)
+		if !strings.Contains(lower, "policy") {
+			continue
+		}
+		if !strings.HasPrefix(lower, "ip policy ") &&
+			!strings.HasPrefix(lower, "ipv6 policy ") &&
+			!strings.HasPrefix(lower, "policy ") &&
+			!strings.Contains(lower, " ip policy ") &&
+			!strings.Contains(lower, " ipv6 policy ") {
+			continue
+		}
+		if !seen[clean] {
+			seen[clean] = true
+			lines = append(lines, clean)
+		}
+	}
+	return lines
+}
+
+func (s *serverState) keeneticNativePolicyAudit(settings map[string]any) map[string]any {
+	mode := cleanKeeneticMode(settings["nativePolicyMode"], "manual", "manual", "observe")
+	result := map[string]any{
+		"ok":      true,
+		"enabled": mode == "observe",
+		"mode":    mode,
+		"count":   0,
+		"lines":   []string{},
+		"detail":  "Native KeeneticOS policies are not observed",
+	}
+	if mode != "observe" {
+		return result
+	}
+	if runtime.GOOS == "windows" {
+		result["ok"] = false
+		result["detail"] = "ndmc audit is available only on Keenetic"
+		return result
+	}
+	ndmc := keeneticExecutable("/bin/ndmc", "/sbin/ndmc", "ndmc")
+	if ndmc == "" {
+		result["ok"] = false
+		result["detail"] = "ndmc not found; native policy audit is read-only and skipped"
+		return result
+	}
+	out := runTimeout(8*time.Second, ndmc, "-c", "show", "running-config")
+	result["command"] = map[string]any{"ok": out["ok"], "stderr": out["stderr"], "message": out["message"]}
+	if out["ok"] != true {
+		result["ok"] = false
+		result["detail"] = firstNonEmpty(fmt.Sprint(out["stderr"]), "ndmc running-config failed")
+		return result
+	}
+	lines := parseKeeneticNativePolicyLines(fmt.Sprint(out["stdout"]))
+	result["count"] = len(lines)
+	result["lines"] = lines
+	if len(lines) == 0 {
+		result["detail"] = "Native KeeneticOS policies were not found"
+	} else {
+		result["detail"] = fmt.Sprintf("Native KeeneticOS policy lines found: %d", len(lines))
+	}
+	return result
+}
+
+func (s *serverState) keeneticRuntimeWatchdogStatus(settings map[string]any) map[string]any {
+	enabled := boolPayload(settings, "fdMonitor", true)
+	deleted := xrayDeletedLogFDStatus()
+	fd := xrayFDUsageStatus()
+	deletedCount := numberAny(deleted["count"])
+	deletedBytes := numberAny(deleted["bytes"])
+	usage := numberAny(fd["usagePercent"])
+	level := "ok"
+	detail := "Xray FD usage is normal"
+	ok := true
+	if !boolPayload(fd, "running", false) {
+		level = "warn"
+		detail = "Xray process is not running"
+	} else if deletedCount > 0 {
+		level = "warn"
+		detail = fmt.Sprintf("deleted log FD: %d, retained %s", deletedCount, byteCount(deletedBytes))
+		ok = false
+	} else if usage >= 80 {
+		level = "warn"
+		detail = fmt.Sprintf("Xray open files usage is %d%%", usage)
+		ok = false
+	}
+	if !enabled {
+		level = "disabled"
+		detail = "FD watchdog is disabled in Keenetic settings"
+		ok = true
+	}
+	return map[string]any{
+		"ok":      ok,
+		"enabled": enabled,
+		"level":   level,
+		"detail":  detail,
+		"deleted": deleted,
+		"fd":      fd,
+	}
+}
+
+func (s *serverState) keeneticRuntimeMaintenance(settings map[string]any) map[string]any {
+	enabled := boolPayload(settings, "fdMonitor", true)
+	if !enabled {
+		return map[string]any{"ok": true, "enabled": false, "changed": false, "stdout": "FD watchdog is disabled"}
+	}
+	before := s.keeneticRuntimeWatchdogStatus(settings)
+	cleared, errors := s.truncateDeletedXrayLogFDs()
+	after := s.keeneticRuntimeWatchdogStatus(settings)
+	return map[string]any{
+		"ok":      len(errors) == 0,
+		"enabled": true,
+		"changed": len(cleared) > 0,
+		"before":  before,
+		"after":   after,
+		"cleared": cleared,
+		"errors":  errors,
+		"stdout":  fmt.Sprintf("FD watchdog checked; cleared deleted descriptors: %d", len(cleared)),
+		"stderr":  strings.Join(errors, "\n"),
+	}
+}
+
 func (s *serverState) transparentInboundStatus(port int, routerMode string) map[string]any {
 	result := map[string]any{"ok": false, "port": port, "found": false, "tcpOpen": false, "detail": "transparent inbound not found in active Xray config"}
 	cfg, err := s.readActiveConfig()
@@ -767,6 +894,17 @@ func (s *serverState) keeneticFirewallPreflight(status map[string]any) map[strin
 	}
 	persistent := boolPayload(status, "persistent", false)
 	add("persistent-hook", "Persistent hook", persistent, ternaryLevel(persistent, "ok", "warn"), fmt.Sprint(status["hookPath"]))
+	watchdog := mapValue(status["watchdog"])
+	if boolPayload(watchdog, "enabled", false) {
+		watchdogOK := boolPayload(watchdog, "ok", false)
+		add("fd-watchdog", "FD watchdog", watchdogOK, ternaryLevel(watchdogOK, "ok", "warn"), fmt.Sprint(watchdog["detail"]))
+	}
+	nativePolicy := mapValue(status["nativePolicy"])
+	if boolPayload(nativePolicy, "enabled", false) {
+		count := numberAny(nativePolicy["count"])
+		nativeOK := boolPayload(nativePolicy, "ok", false) && count == 0
+		add("native-policy", "KeeneticOS policy", nativeOK, ternaryLevel(nativeOK, "ok", "warn"), fmt.Sprint(nativePolicy["detail"]))
+	}
 	ok := true
 	runtimeOK := active
 	warnings := 0
@@ -1106,6 +1244,9 @@ func (s *serverState) keeneticFirewallStatus() map[string]any {
 		ipv6Mode = cleanKeeneticMode(settings["ipv6Mode"], "observe", "observe", "disable", "allow")
 	}
 	keeneticSettings := s.keeneticSettings()
+	keeneticRuntimeSettings := mapValue(keeneticSettings["settings"])
+	watchdog := s.keeneticRuntimeWatchdogStatus(keeneticRuntimeSettings)
+	nativePolicy := s.keeneticNativePolicyAudit(keeneticRuntimeSettings)
 	ipExclude := []string{}
 	portProxy := []string{}
 	portExclude := []string{}
@@ -1171,6 +1312,8 @@ func (s *serverState) keeneticFirewallStatus() map[string]any {
 		"ipRules":             ipRules,
 		"ipRoutes":            ipRoutes,
 		"tproxyModules":       keeneticTPROXYTargetStatus(),
+		"watchdog":            watchdog,
+		"nativePolicy":        nativePolicy,
 		"killSwitchNftset":    map[string]any{"available": false, "active": false, "count": 0, "domains": []string{}},
 		"killSwitchDNSBlock":  map[string]any{"available": false, "active": false, "count": 0, "domains": []string{}},
 		"directNftset":        map[string]any{"available": false, "active": false, "count": 0, "domains": []string{}},
@@ -1183,6 +1326,47 @@ func (s *serverState) keeneticFirewallStatus() map[string]any {
 	}
 	status["preflight"] = s.keeneticFirewallPreflight(status)
 	return status
+}
+
+func (s *serverState) repairKeeneticRuntime(status map[string]any) map[string]any {
+	settings := mapValue(mapValue(status["keeneticSettings"])["settings"])
+	routerMode := strings.TrimSpace(fmt.Sprint(status["routerMode"]))
+	preflight := mapValue(status["preflight"])
+	needsHookRepair := routerMode == "tproxy" && (boolPayload(status, "needsPolicyFix", false) || !boolPayload(preflight, "runtimeOk", false))
+	result := map[string]any{
+		"repair":     true,
+		"changed":    false,
+		"hookRepair": false,
+	}
+	ok := true
+	if needsHookRepair {
+		apply := s.applyKeeneticFirewall(status)
+		result["hookRepair"] = true
+		result["apply"] = apply
+		result["changed"] = true
+		ok = ok && boolPayload(apply, "ok", false)
+	}
+	maintenance := s.keeneticRuntimeMaintenance(settings)
+	result["maintenance"] = maintenance
+	if boolPayload(maintenance, "changed", false) {
+		result["changed"] = true
+	}
+	ok = ok && boolPayload(maintenance, "ok", false)
+	repaired := s.firewallStatus()
+	result["status"] = repaired
+	if routerMode == "tproxy" {
+		ok = ok && boolPayload(repaired, "ipRule", false) && boolPayload(repaired, "ipRoute", false)
+	}
+	if preflightAfter := mapValue(repaired["preflight"]); preflightAfter["summary"] == "blocked" {
+		ok = false
+	}
+	result["ok"] = ok
+	if result["changed"] == false {
+		result["stdout"] = "Keenetic runtime repair checked; changes are not needed"
+	} else {
+		result["stdout"] = "Keenetic runtime repair completed"
+	}
+	return result
 }
 
 func (s *serverState) previewKeeneticFirewall(payload map[string]any) map[string]any {

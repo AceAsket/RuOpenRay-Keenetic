@@ -193,7 +193,7 @@ func (s *serverState) keeneticSettings() map[string]any {
 		"portProxy":        portProxy,
 		"portExclude":      portExclude,
 		"rejected":         map[string]any{"ipExclude": ipRejected, "portProxy": portProxyRejected, "portExclude": portExcludeRejected},
-		"appliedFeatures":  map[string]any{"externalLists": true, "dscp": settings["dscpMode"] == "tproxy", "ipv6": settings["ipv6Mode"] == "disable", "entwareProxy": settings["entwareProxy"] == true, "nativePolicy": false},
+		"appliedFeatures":  map[string]any{"externalLists": true, "dscp": settings["dscpMode"] == "tproxy", "ipv6": settings["ipv6Mode"] == "disable", "entwareProxy": settings["entwareProxy"] == true, "fdWatchdog": settings["fdMonitor"] == true, "nativePolicy": settings["nativePolicyMode"] == "observe"},
 		"settingsPath":     s.keeneticSettingsPath(),
 		"firewallHookPath": keeneticRedirectHookPath,
 	}

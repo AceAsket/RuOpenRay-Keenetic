@@ -82,9 +82,12 @@ export function createFirewallActions({
     try {
       const result = await request('/api/firewall/repair', { method: 'POST' });
       state.firewallStatus = result.status || result;
+      const isKeenetic = state.firewallStatus?.platform === 'keenetic';
       state.message = result.ok
-        ? (result.changed === false ? 'TPROXY не требует восстановления' : 'TPROXY восстановлен')
-        : (result.error || 'Не удалось восстановить TPROXY');
+        ? (isKeenetic
+          ? (result.changed === false ? 'Keenetic runtime проверен, изменений не нужно' : 'Keenetic runtime восстановлен')
+          : (result.changed === false ? 'TPROXY не требует восстановления' : 'TPROXY восстановлен'))
+        : (result.error || (isKeenetic ? 'Не удалось восстановить Keenetic runtime' : 'Не удалось восстановить TPROXY'));
       return result;
     } finally {
       state.firewallSaving = false;

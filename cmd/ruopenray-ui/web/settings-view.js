@@ -348,6 +348,8 @@ function settingsPanel() {
   const keeneticReport = state.keeneticSettings || {};
   const keeneticRejected = keeneticReport.rejected || {};
   const appliedFeatures = keeneticReport.appliedFeatures || {};
+  const keeneticWatchdog = state.firewallStatus?.watchdog || {};
+  const keeneticNativePolicy = state.firewallStatus?.nativePolicy || {};
   const listCount = (items) => Array.isArray(items) ? items.length : 0;
   const rejectedCount = listCount(keeneticRejected.ipExclude) + listCount(keeneticRejected.portProxy) + listCount(keeneticRejected.portExclude);
   const keeneticSection = `
@@ -359,7 +361,7 @@ function settingsPanel() {
         <article><span>Внешние списки</span><strong>${appliedFeatures.externalLists ? 'в hook' : 'сохранены'}</strong><small>${escapeHtml(`${listCount(keeneticReport.ipExclude)} IP exclude · ${listCount(keeneticReport.portProxy)} proxy ports · ${listCount(keeneticReport.portExclude)} port exclude`)}</small></article>
         <article><span>IPv6</span><strong>${escapeHtml(state.keeneticIpv6Mode === 'disable' ? 'выключать' : state.keeneticIpv6Mode === 'allow' ? 'разрешать' : 'наблюдать')}</strong><small>${appliedFeatures.ipv6 ? 'Keenetic hook заблокирует IPv6 forwarding.' : 'Без изменений ip6tables.'}</small></article>
         <article><span>DSCP</span><strong>${escapeHtml(state.keeneticDscpMode === 'tproxy' ? `proxy ${state.keeneticDscpProxy}` : 'выключен')}</strong><small>${appliedFeatures.dscp ? 'TPROXY hook выставит метку proxy.' : 'Сохранено без применения.'}</small></article>
-        <article><span>FD monitor</span><strong>${state.keeneticFdMonitor ? 'включен' : 'выключен'}</strong><small>Логи уже чистят deleted FD; отдельный watchdog следующим шагом.</small></article>
+        <article><span>FD monitor</span><strong>${state.keeneticFdMonitor ? (keeneticWatchdog.ok === false ? 'нужна чистка' : 'включен') : 'выключен'}</strong><small>${escapeHtml(keeneticWatchdog.detail || 'Следит за deleted FD и лимитами Xray.')}</small></article>
       </div>
       <div class="settings-maintenance">
         <div class="settings-field">
@@ -377,7 +379,7 @@ function settingsPanel() {
             <option value="manual" ${state.keeneticNativePolicyMode !== 'observe' ? 'selected' : ''}>Ручной scope RuOpenRay</option>
             <option value="observe" ${state.keeneticNativePolicyMode === 'observe' ? 'selected' : ''}>Показывать политики</option>
           </select>
-          <small>Безопасное чтение политик вынесем в следующий слой, запись только после проверки ndmc на стенде.</small>
+          <small>${escapeHtml(keeneticNativePolicy.detail || 'Read-only аудит running-config через ndmc; RuOpenRay здесь ничего не записывает.')}</small>
         </div>
         <label class="settings-check compact ${state.keeneticEntwareProxy ? 'active' : ''}">
           <input id="keeneticEntwareProxy" type="checkbox" ${state.keeneticEntwareProxy ? 'checked' : ''} />

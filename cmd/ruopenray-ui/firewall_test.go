@@ -189,6 +189,23 @@ func TestParseKeeneticIptablesCounters(t *testing.T) {
 	}
 }
 
+func TestParseKeeneticNativePolicyLines(t *testing.T) {
+	body := `
+interface Home
+ ip policy Main allow
+ ipv6 policy Guest deny
+ description policy text should not match
+ policy route vpn
+ ip route default 192.0.2.1
+ ip policy Main allow
+`
+	got := parseKeeneticNativePolicyLines(body)
+	want := []string{"ip policy Main allow", "ipv6 policy Guest deny", "policy route vpn"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("native policy lines = %#v, want %#v", got, want)
+	}
+}
+
 func TestExpandFirewallGeoPayloadAddsGeoTargets(t *testing.T) {
 	geoDir := t.TempDir()
 	writeFirewallGeoFixture(t, geoDir)

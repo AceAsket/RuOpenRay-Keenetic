@@ -113,7 +113,7 @@ func readLogTailLines(path string, maxLines int) (string, error) {
 	return logview.TailFile(path, maxLines)
 }
 
-func xrayDeletedLogFDPaths(name string) []string {
+func xrayPIDs() []string {
 	if runtime.GOOS == "windows" {
 		return nil
 	}
@@ -123,8 +123,12 @@ func xrayDeletedLogFDPaths(name string) []string {
 	if err != nil {
 		return nil
 	}
+	return strings.Fields(string(output))
+}
+
+func xrayDeletedLogFDPaths(name string) []string {
 	paths := []string{}
-	for _, pid := range strings.Fields(string(output)) {
+	for _, pid := range xrayPIDs() {
 		fdDir := filepath.Join("/proc", pid, "fd")
 		entries, err := os.ReadDir(fdDir)
 		if err != nil {
@@ -142,6 +146,83 @@ func xrayDeletedLogFDPaths(name string) []string {
 		}
 	}
 	return paths
+}
+
+func xrayDeletedLogFDStatus() map[string]any {
+	items := []map[string]any{}
+	seen := map[string]bool{}
+	total := int64(0)
+	for _, name := range []string{"access.log", "error.log"} {
+		for _, fdPath := range xrayDeletedLogFDPaths(name) {
+			if seen[fdPath] {
+				continue
+			}
+			seen[fdPath] = true
+			item := map[string]any{"path": fdPath, "name": name}
+			if info, err := os.Stat(fdPath); err == nil && !info.IsDir() {
+				item["bytes"] = info.Size()
+				total += info.Size()
+			}
+			items = append(items, item)
+		}
+	}
+	return map[string]any{
+		"ok":    len(items) == 0,
+		"count": len(items),
+		"bytes": total,
+		"items": items,
+	}
+}
+
+func xrayOpenFilesLimit(pid string) int64 {
+	body, err := os.ReadFile(filepath.Join("/proc", pid, "limits"))
+	if err != nil {
+		return 0
+	}
+	for _, line := range strings.Split(string(body), "\n") {
+		if !strings.HasPrefix(line, "Max open files") {
+			continue
+		}
+		fields := strings.Fields(line)
+		for _, field := range fields {
+			if value, ok := parseNumber(field); ok && value > 0 {
+				return value
+			}
+		}
+	}
+	return 0
+}
+
+func xrayFDUsageStatus() map[string]any {
+	pids := xrayPIDs()
+	processes := []map[string]any{}
+	totalOpen := int64(0)
+	limit := int64(0)
+	for _, pid := range pids {
+		entries, err := os.ReadDir(filepath.Join("/proc", pid, "fd"))
+		if err != nil {
+			continue
+		}
+		open := int64(len(entries))
+		pidLimit := xrayOpenFilesLimit(pid)
+		totalOpen += open
+		if pidLimit > 0 && (limit == 0 || pidLimit < limit) {
+			limit = pidLimit
+		}
+		processes = append(processes, map[string]any{"pid": pid, "open": open, "limit": pidLimit})
+	}
+	usagePercent := int64(0)
+	if limit > 0 {
+		usagePercent = totalOpen * 100 / limit
+	}
+	return map[string]any{
+		"ok":           len(processes) > 0 && (limit == 0 || usagePercent < 80),
+		"running":      len(processes) > 0,
+		"open":         totalOpen,
+		"limit":        limit,
+		"usagePercent": usagePercent,
+		"processes":    processes,
+	}
 }
 
 func lastLines(text string, maxLines int) string {

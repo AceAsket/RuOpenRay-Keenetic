@@ -1082,6 +1082,8 @@ function firewallApplyPanel() {
     ? status.tproxyModules?.ok ? 'TPROXY готов' : status.tproxyModules?.loadable ? 'TPROXY загрузится' : 'REDIRECT режим'
     : (status.tproxyModules?.ok === false ? 'не все установлены' : 'готово');
   const canLoadTproxyModules = isKeenetic && status.tproxyModules?.ok !== true && status.tproxyModules?.unsupported !== true;
+  const canRepairRuntime = isKeenetic || status.routerMode === 'tproxy';
+  const repairLabel = isKeenetic ? 'Починить runtime' : 'Восстановить TPROXY';
   const previewTitle = isKeenetic ? 'Preview Keenetic hook' : 'Preview nftables';
   const previewDetail = isKeenetic ? 'Что будет сохранено в /opt/etc/ndm и применено через iptables.' : 'Что будет сохранено и применено на OpenWrt.';
   const matchesSelection = typeof firewallReadyStatus === 'function' ? firewallReadyStatus(status) : true;
@@ -1092,6 +1094,8 @@ function firewallApplyPanel() {
   const activeCounters = status.routerMode === 'tproxy'
     ? { jump: counters.tproxyJump || {}, chain: counters.tproxyChain || {} }
     : { jump: counters.redirectJump || {}, chain: counters.redirectChain || {} };
+  const watchdog = status.watchdog || {};
+  const nativePolicy = status.nativePolicy || {};
   const counterText = (item) => `${Number(item?.packets || 0)} pkt / ${byteSize(Number(item?.bytes || 0))}`;
   const preflightLabel = preflight.summary === 'blocked'
     ? 'есть ошибки'
@@ -1117,7 +1121,7 @@ function firewallApplyPanel() {
         <div class="split-actions">
           <button class="btn secondary" data-action="refreshFirewallStatus" ${state.firewallSaving ? 'disabled' : ''}>Обновить</button>
           ${isKeenetic ? `<button class="btn secondary ${state.busyAction === 'loadTproxyModules' ? 'is-busy' : ''}" data-action="loadTproxyModules" ${state.firewallSaving || !canLoadTproxyModules ? 'disabled' : ''}>${state.busyAction === 'loadTproxyModules' ? 'Загружаю...' : 'Загрузить TPROXY'}</button>` : ''}
-          ${isKeenetic || status.routerMode === 'tproxy' ? `<button class="btn secondary ${state.busyAction === 'repairFirewall' ? 'is-busy' : ''}" data-action="repairFirewall" ${state.firewallSaving || status.routerMode !== 'tproxy' ? 'disabled' : ''}>${state.busyAction === 'repairFirewall' ? 'Восстанавливаю...' : 'Восстановить TPROXY'}</button>` : ''}
+          ${isKeenetic || status.routerMode === 'tproxy' ? `<button class="btn secondary ${state.busyAction === 'repairFirewall' ? 'is-busy' : ''}" data-action="repairFirewall" ${state.firewallSaving || !canRepairRuntime ? 'disabled' : ''}>${state.busyAction === 'repairFirewall' ? 'Восстанавливаю...' : repairLabel}</button>` : ''}
           <button class="btn secondary" data-action="downloadFirewallRules" ${state.firewallSaving ? 'disabled' : ''}>Скачать правила</button>
           <button class="btn warning ${state.firewallSaving || state.configApplying ? 'is-busy' : ''}" data-action="apply" ${state.firewallSaving || state.configApplying || !available || blockedBySafety ? 'disabled' : ''}>${state.firewallSaving || state.configApplying ? 'Применяю изменения...' : 'Применить изменения'}</button>
           <button class="btn secondary" data-action="disableFirewall" ${state.firewallSaving || (!active && !persistent) ? 'disabled' : ''}>Отключить</button>
@@ -1133,6 +1137,8 @@ function firewallApplyPanel() {
         <article><span>${escapeHtml(moduleLabel)}</span><strong>${escapeHtml(moduleState)}</strong><small>${escapeHtml(status.tproxyModules?.detail || 'проверяется на роутере')}</small></article>
         ${isKeenetic ? `<article><span>Проверка</span><strong>${escapeHtml(preflightLabel)}</strong><small>${escapeHtml(preflightDetail || preflight.transparentInbound?.detail || 'iptables, Xray и hook проверены адаптером')}</small></article>` : ''}
         ${isKeenetic ? `<article><span>Счетчики</span><strong>${escapeHtml(counterText(activeCounters.jump))}</strong><small>${escapeHtml(`chain ${counterText(activeCounters.chain)}`)}</small></article>` : ''}
+        ${isKeenetic ? `<article><span>FD watchdog</span><strong>${escapeHtml(watchdog.enabled === false ? 'выключен' : watchdog.ok ? 'чисто' : 'нужна чистка')}</strong><small>${escapeHtml(watchdog.detail || 'следит за deleted FD и лимитами Xray')}</small></article>` : ''}
+        ${isKeenetic ? `<article><span>Keenetic policy</span><strong>${escapeHtml(nativePolicy.enabled ? `${nativePolicy.count || 0} строк` : 'ручной scope')}</strong><small>${escapeHtml(nativePolicy.detail || 'read-only аудит родных политик KeeneticOS')}</small></article>` : ''}
         <article><span>Домены защиты</span><strong>${escapeHtml(status.killSwitchDNSBlock?.active ? `${status.killSwitchDNSBlock.count || 0} DNS` : status.killSwitchNftset?.active ? `${status.killSwitchNftset.count || 0} nftset` : 'не заданы')}</strong><small>${escapeHtml(status.killSwitchDNSBlock?.active ? 'dnsmasq address' : (status.killSwitchNftset?.set || 'inet ruopenray killswitch4'))}</small></article>
       </div>
       <details class="intercept-details compact" data-details-key="firewall-preview-nft">

@@ -605,13 +605,11 @@ func (s *serverState) applyFirewall(payload map[string]any) map[string]any {
 
 func (s *serverState) repairFirewall() map[string]any {
 	status := s.firewallStatus()
+	if s.cfg.isKeenetic() {
+		return s.repairKeeneticRuntime(status)
+	}
 	if fmt.Sprint(status["routerMode"]) != "tproxy" {
 		return map[string]any{"ok": true, "changed": false, "status": status, "stdout": "TPROXY repair is not needed outside TPROXY mode"}
-	}
-	if s.cfg.isKeenetic() {
-		result := s.applyKeeneticFirewall(status)
-		result["repair"] = true
-		return result
 	}
 	steps := applyTProxyPolicyRouting(true)
 	repaired := s.firewallStatus()
