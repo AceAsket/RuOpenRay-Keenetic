@@ -4,6 +4,7 @@ import { routePresetIconView } from './route-visuals.js';
 export function createRoutingView(deps) {
   const {
     state,
+    byteSize,
     escapeHtml,
     operationProgressView,
     stat,
@@ -1086,6 +1087,22 @@ function firewallApplyPanel() {
   const matchesSelection = typeof firewallReadyStatus === 'function' ? firewallReadyStatus(status) : true;
   const safety = typeof firewallSafetyCheck === 'function' ? firewallSafetyCheck() : { level: 'safe', items: [], hasDanger: false };
   const blockedBySafety = Boolean(safety.hasDanger && !state.firewallSafetyAccepted);
+  const preflight = status.preflight || {};
+  const counters = status.counters || {};
+  const activeCounters = status.routerMode === 'tproxy'
+    ? { jump: counters.tproxyJump || {}, chain: counters.tproxyChain || {} }
+    : { jump: counters.redirectJump || {}, chain: counters.redirectChain || {} };
+  const counterText = (item) => `${Number(item?.packets || 0)} pkt / ${byteSize(Number(item?.bytes || 0))}`;
+  const preflightLabel = preflight.summary === 'blocked'
+    ? 'есть ошибки'
+    : preflight.summary === 'warnings'
+      ? 'есть предупреждения'
+      : preflight.runtimeOk
+        ? 'трафик готов'
+        : 'готово к применению';
+  const preflightDetail = Array.isArray(preflight.checks)
+    ? preflight.checks.filter((item) => item.level !== 'ok').slice(0, 3).map((item) => item.detail || item.label).join(' · ')
+    : '';
   const summary = active
     ? persistent
       ? 'активен и сохранен'
@@ -1114,6 +1131,8 @@ function firewallApplyPanel() {
         <article><span>${escapeHtml(rulesLabel)}</span><strong>${escapeHtml(rulesState)}</strong><small>${escapeHtml(rulesPath)}</small></article>
         <article><span>${escapeHtml(routeLabel)}</span><strong>${escapeHtml(routeState)}</strong><small>${escapeHtml(routeDetail)}</small></article>
         <article><span>${escapeHtml(moduleLabel)}</span><strong>${escapeHtml(moduleState)}</strong><small>${escapeHtml(status.tproxyModules?.detail || 'проверяется на роутере')}</small></article>
+        ${isKeenetic ? `<article><span>Проверка</span><strong>${escapeHtml(preflightLabel)}</strong><small>${escapeHtml(preflightDetail || preflight.transparentInbound?.detail || 'iptables, Xray и hook проверены адаптером')}</small></article>` : ''}
+        ${isKeenetic ? `<article><span>Счетчики</span><strong>${escapeHtml(counterText(activeCounters.jump))}</strong><small>${escapeHtml(`chain ${counterText(activeCounters.chain)}`)}</small></article>` : ''}
         <article><span>Домены защиты</span><strong>${escapeHtml(status.killSwitchDNSBlock?.active ? `${status.killSwitchDNSBlock.count || 0} DNS` : status.killSwitchNftset?.active ? `${status.killSwitchNftset.count || 0} nftset` : 'не заданы')}</strong><small>${escapeHtml(status.killSwitchDNSBlock?.active ? 'dnsmasq address' : (status.killSwitchNftset?.set || 'inet ruopenray killswitch4'))}</small></article>
       </div>
       <details class="intercept-details compact" data-details-key="firewall-preview-nft">

@@ -607,6 +607,205 @@ func parseKeeneticDeviceScope(prerouting string, chain string) (string, []string
 	return "all", []string{}
 }
 
+func parseKeeneticRuleCounters(text string) map[string]any {
+	packets := int64(0)
+	bytes := int64(0)
+	for _, line := range strings.Split(text, "\n") {
+		fields := strings.Fields(line)
+		if len(fields) < 3 {
+			continue
+		}
+		pkts, ok := parseNumber(fields[0])
+		if !ok {
+			continue
+		}
+		size, ok := parseNumber(fields[1])
+		if !ok {
+			continue
+		}
+		packets += pkts
+		bytes += size
+	}
+	return map[string]any{"packets": packets, "bytes": bytes}
+}
+
+func parseKeeneticTargetCounters(text string, target string) map[string]any {
+	packets := int64(0)
+	bytes := int64(0)
+	for _, line := range strings.Split(text, "\n") {
+		if !strings.Contains(line, target) {
+			continue
+		}
+		fields := strings.Fields(line)
+		if len(fields) < 3 {
+			continue
+		}
+		pkts, ok := parseNumber(fields[0])
+		if !ok {
+			continue
+		}
+		size, ok := parseNumber(fields[1])
+		if !ok {
+			continue
+		}
+		packets += pkts
+		bytes += size
+	}
+	return map[string]any{"packets": packets, "bytes": bytes}
+}
+
+func counterPackets(counter map[string]any) int64 {
+	if counter == nil {
+		return 0
+	}
+	return numberAny(counter["packets"])
+}
+
+func (s *serverState) transparentInboundStatus(port int, routerMode string) map[string]any {
+	result := map[string]any{"ok": false, "port": port, "found": false, "tcpOpen": false, "detail": "transparent inbound not found in active Xray config"}
+	cfg, err := s.readActiveConfig()
+	if err != nil {
+		result["error"] = err.Error()
+		result["detail"] = "active Xray config is not readable"
+		return result
+	}
+	for _, item := range asArray(cfg["inbounds"]) {
+		inbound, ok := item.(map[string]any)
+		if !ok || number(inbound["port"], 0) != port {
+			continue
+		}
+		protocol := strings.TrimSpace(fmt.Sprint(inbound["protocol"]))
+		tag := strings.TrimSpace(fmt.Sprint(inbound["tag"]))
+		settings, _ := inbound["settings"].(map[string]any)
+		streamSettings, _ := inbound["streamSettings"].(map[string]any)
+		sockopt, _ := streamSettings["sockopt"].(map[string]any)
+		tproxyMode := strings.TrimSpace(fmt.Sprint(sockopt["tproxy"]))
+		network := strings.TrimSpace(fmt.Sprint(settings["network"]))
+		listen := strings.TrimSpace(fmt.Sprint(inbound["listen"]))
+		if listen == "" || listen == "<nil>" || listen == "0.0.0.0" || listen == "::" {
+			listen = "127.0.0.1"
+		}
+		found := protocol == "dokodemo-door" && (strings.Contains(tag, "transparent") || settings["followRedirect"] == true || tproxyMode == "tproxy" || tproxyMode == "redirect")
+		if !found {
+			continue
+		}
+		tcpOpen := tcpPortOpen("127.0.0.1:"+fmt.Sprint(port), 250*time.Millisecond)
+		okResult := true
+		detail := "transparent inbound is present"
+		if routerMode == "tproxy" && tproxyMode != "tproxy" {
+			okResult = false
+			detail = "transparent inbound exists, but streamSettings.sockopt.tproxy is not tproxy"
+		}
+		if !tcpOpen {
+			okResult = false
+			detail = "transparent inbound exists, but TCP port is not open"
+		}
+		result = map[string]any{
+			"ok":         okResult,
+			"port":       port,
+			"found":      true,
+			"tag":        tag,
+			"protocol":   protocol,
+			"listen":     listen,
+			"network":    network,
+			"tproxyMode": tproxyMode,
+			"follow":     settings["followRedirect"] == true,
+			"tcpOpen":    tcpOpen,
+			"detail":     detail,
+		}
+		return result
+	}
+	return result
+}
+
+func (s *serverState) keeneticFirewallPreflight(status map[string]any) map[string]any {
+	routerMode := strings.TrimSpace(fmt.Sprint(status["routerMode"]))
+	if routerMode != "tproxy" {
+		routerMode = "redirect"
+	}
+	transparentPort := number(status["transparentPort"], 52345)
+	service := s.xrayServiceStatus()
+	inbound := s.transparentInboundStatus(transparentPort, routerMode)
+	tproxyModules := mapValue(status["tproxyModules"])
+	counters := mapValue(status["counters"])
+	active := boolPayload(status, "active", false)
+	checks := []map[string]any{}
+	add := func(id, label string, ok bool, level string, detail string) {
+		checks = append(checks, map[string]any{"id": id, "label": label, "ok": ok, "level": level, "detail": detail})
+	}
+	available := boolPayload(status, "available", false)
+	add("iptables", "iptables", available, ternaryLevel(available, "ok", "error"), firstNonEmpty(fmt.Sprint(status["iptablesPath"]), "iptables not found"))
+	xrayRunning := boolPayload(service, "running", false)
+	add("xray-service", "Xray service", xrayRunning, ternaryLevel(xrayRunning, "ok", "error"), firstNonEmpty(fmt.Sprint(service["detail"]), fmt.Sprint(service["script"])))
+	inboundOK := boolPayload(inbound, "ok", false)
+	add("transparent-inbound", "Transparent inbound", inboundOK, ternaryLevel(inboundOK, "ok", "error"), fmt.Sprint(inbound["detail"]))
+	if routerMode == "tproxy" {
+		modulesOK := boolPayload(tproxyModules, "ok", false)
+		modulesLoadable := boolPayload(tproxyModules, "loadable", false)
+		add("tproxy-modules", "TPROXY target", modulesOK || modulesLoadable, ternaryLevel(modulesOK, "ok", ternaryLevel(modulesLoadable, "warn", "error")), fmt.Sprint(tproxyModules["detail"]))
+		ipRule := boolPayload(status, "ipRule", false)
+		ipRoute := boolPayload(status, "ipRoute", false)
+		policyOK := ipRule && ipRoute
+		level := "ok"
+		detail := fmt.Sprintf("ip rule: %v; route table 111: %v", ipRule, ipRoute)
+		if !policyOK {
+			level = "warn"
+			if active {
+				level = "error"
+			}
+		}
+		add("policy-routing", "Policy routing", policyOK, level, detail)
+		jump := mapValue(counters["tproxyJump"])
+		chain := mapValue(counters["tproxyChain"])
+		seen := counterPackets(jump) > 0 || counterPackets(chain) > 0
+		add("tproxy-counters", "TPROXY counters", seen || !active, ternaryLevel(seen, "ok", "warn"), fmt.Sprintf("jump packets: %d; chain packets: %d", counterPackets(jump), counterPackets(chain)))
+	} else {
+		jump := mapValue(counters["redirectJump"])
+		chain := mapValue(counters["redirectChain"])
+		seen := counterPackets(jump) > 0 || counterPackets(chain) > 0
+		add("redirect-counters", "REDIRECT counters", seen || !active, ternaryLevel(seen, "ok", "warn"), fmt.Sprintf("jump packets: %d; chain packets: %d", counterPackets(jump), counterPackets(chain)))
+	}
+	persistent := boolPayload(status, "persistent", false)
+	add("persistent-hook", "Persistent hook", persistent, ternaryLevel(persistent, "ok", "warn"), fmt.Sprint(status["hookPath"]))
+	ok := true
+	runtimeOK := active
+	warnings := 0
+	for _, check := range checks {
+		if fmt.Sprint(check["level"]) == "error" {
+			ok = false
+			runtimeOK = false
+		}
+		if fmt.Sprint(check["level"]) == "warn" {
+			warnings++
+		}
+	}
+	if !active {
+		runtimeOK = false
+	}
+	summary := "ready"
+	if !ok {
+		summary = "blocked"
+	} else if warnings > 0 {
+		summary = "warnings"
+	}
+	return map[string]any{
+		"ok":                 ok,
+		"runtimeOk":          runtimeOK,
+		"summary":            summary,
+		"warnings":           warnings,
+		"checks":             checks,
+		"service":            service,
+		"transparentInbound": inbound,
+	}
+}
+
+func ternaryLevel(condition bool, yes string, no string) string {
+	if condition {
+		return yes
+	}
+	return no
+}
+
 func (s *serverState) keeneticFirewallPorts(payload map[string]any) []string {
 	if fmt.Sprint(payload["portMode"]) == "all" {
 		return []string{"all"}
@@ -767,6 +966,11 @@ func (s *serverState) keeneticFirewallStatus() map[string]any {
 	filterChain := map[string]any{"ok": false, "stderr": "iptables unavailable"}
 	dnsGuardChain := map[string]any{"ok": false, "stderr": "iptables unavailable"}
 	filterForward := map[string]any{"ok": false, "stderr": "iptables unavailable"}
+	natChainCounters := map[string]any{"ok": false, "stderr": "iptables unavailable"}
+	natPreroutingCounters := map[string]any{"ok": false, "stderr": "iptables unavailable"}
+	mangleChainCounters := map[string]any{"ok": false, "stderr": "iptables unavailable"}
+	manglePreroutingCounters := map[string]any{"ok": false, "stderr": "iptables unavailable"}
+	filterForwardCounters := map[string]any{"ok": false, "stderr": "iptables unavailable"}
 	ipv6Chain := map[string]any{"ok": false, "stderr": "ip6tables unavailable"}
 	ipv6Forward := map[string]any{"ok": false, "stderr": "ip6tables unavailable"}
 	ipRules := map[string]any{"ok": false, "stderr": "ip unavailable"}
@@ -779,6 +983,11 @@ func (s *serverState) keeneticFirewallStatus() map[string]any {
 		filterChain = runTimeout(5*time.Second, iptables, "-t", "filter", "-S", "RUOPENRAY_QUIC")
 		dnsGuardChain = runTimeout(5*time.Second, iptables, "-t", "filter", "-S", "RUOPENRAY_DNS_GUARD")
 		filterForward = runTimeout(5*time.Second, iptables, "-t", "filter", "-S", "FORWARD")
+		natChainCounters = runTimeout(5*time.Second, iptables, "-t", "nat", "-vnL", "RUOPENRAY")
+		natPreroutingCounters = runTimeout(5*time.Second, iptables, "-t", "nat", "-vnL", "PREROUTING")
+		mangleChainCounters = runTimeout(5*time.Second, iptables, "-t", "mangle", "-vnL", "RUOPENRAY_TPROXY")
+		manglePreroutingCounters = runTimeout(5*time.Second, iptables, "-t", "mangle", "-vnL", "PREROUTING")
+		filterForwardCounters = runTimeout(5*time.Second, iptables, "-t", "filter", "-vnL", "FORWARD")
 		ipRules = runTimeout(5*time.Second, "ip", "rule", "show")
 		ipRoutes = runTimeout(5*time.Second, "ip", "route", "show", "table", "111")
 	}
@@ -793,6 +1002,11 @@ func (s *serverState) keeneticFirewallStatus() map[string]any {
 	filterChainText := fmt.Sprint(filterChain["stdout"])
 	dnsGuardChainText := fmt.Sprint(dnsGuardChain["stdout"])
 	filterForwardText := fmt.Sprint(filterForward["stdout"])
+	natChainCountersText := fmt.Sprint(natChainCounters["stdout"])
+	natPreroutingCountersText := fmt.Sprint(natPreroutingCounters["stdout"])
+	mangleChainCountersText := fmt.Sprint(mangleChainCounters["stdout"])
+	manglePreroutingCountersText := fmt.Sprint(manglePreroutingCounters["stdout"])
+	filterForwardCountersText := fmt.Sprint(filterForwardCounters["stdout"])
 	ipv6ChainText := fmt.Sprint(ipv6Chain["stdout"])
 	ipv6ForwardText := fmt.Sprint(ipv6Forward["stdout"])
 	redirectActive := natChain["ok"] == true &&
@@ -850,6 +1064,15 @@ func (s *serverState) keeneticFirewallStatus() map[string]any {
 	ipRoutesText := fmt.Sprint(ipRoutes["stdout"])
 	ipRuleActive := strings.Contains(ipRulesText, "fwmark 0x111") && strings.Contains(ipRulesText, "lookup 111")
 	ipRouteActive := strings.Contains(ipRoutesText, "local") && strings.Contains(ipRoutesText, "dev lo")
+	counters := map[string]any{
+		"redirectChain": parseKeeneticRuleCounters(natChainCountersText),
+		"redirectJump":  parseKeeneticTargetCounters(natPreroutingCountersText, "RUOPENRAY"),
+		"tproxyChain":   parseKeeneticRuleCounters(mangleChainCountersText),
+		"tproxyJump":    parseKeeneticTargetCounters(manglePreroutingCountersText, "RUOPENRAY_TPROXY"),
+		"quicGuardJump": parseKeeneticTargetCounters(filterForwardCountersText, "RUOPENRAY_QUIC"),
+		"dnsGuardJump":  parseKeeneticTargetCounters(filterForwardCountersText, "RUOPENRAY_DNS_GUARD"),
+		"raw":           map[string]any{"natChain": natChainCounters, "natPrerouting": natPreroutingCounters, "mangleChain": mangleChainCounters, "manglePrerouting": manglePreroutingCounters, "filterForward": filterForwardCounters},
+	}
 	meta := readKeeneticFirewallMeta()
 	if value := strings.TrimSpace(fmt.Sprint(meta["routerMode"])); !active && value != "" && value != "<nil>" {
 		routerMode = value
@@ -944,6 +1167,7 @@ func (s *serverState) keeneticFirewallStatus() map[string]any {
 			"ipv6Chain":        ipv6Chain,
 			"ipv6Forward":      ipv6Forward,
 		},
+		"counters":            counters,
 		"ipRules":             ipRules,
 		"ipRoutes":            ipRoutes,
 		"tproxyModules":       keeneticTPROXYTargetStatus(),
@@ -957,6 +1181,7 @@ func (s *serverState) keeneticFirewallStatus() map[string]any {
 	if !available {
 		status["message"] = "iptables is unavailable in Entware; install it with: opkg install iptables"
 	}
+	status["preflight"] = s.keeneticFirewallPreflight(status)
 	return status
 }
 

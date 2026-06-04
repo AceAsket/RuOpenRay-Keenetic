@@ -172,6 +172,23 @@ func TestKeeneticFirewallMetaNormalizesScope(t *testing.T) {
 	}
 }
 
+func TestParseKeeneticIptablesCounters(t *testing.T) {
+	body := `Chain PREROUTING (policy ACCEPT 10 packets, 800 bytes)
+ pkts bytes target     prot opt in     out     source               destination
+   12   960 RUOPENRAY_TPROXY  tcp  --  br0    *       0.0.0.0/0            0.0.0.0/0 tcp dpt:443
+    3   300 RETURN     udp  --  br0    *       0.0.0.0/0            10.0.0.0/8
+    5   500 RUOPENRAY_TPROXY  udp  --  br0    *       0.0.0.0/0            0.0.0.0/0 udp dpt:443`
+
+	total := parseKeeneticRuleCounters(body)
+	if numberAny(total["packets"]) != 20 || numberAny(total["bytes"]) != 1760 {
+		t.Fatalf("total counters = %#v", total)
+	}
+	target := parseKeeneticTargetCounters(body, "RUOPENRAY_TPROXY")
+	if numberAny(target["packets"]) != 17 || numberAny(target["bytes"]) != 1460 {
+		t.Fatalf("target counters = %#v", target)
+	}
+}
+
 func TestExpandFirewallGeoPayloadAddsGeoTargets(t *testing.T) {
 	geoDir := t.TempDir()
 	writeFirewallGeoFixture(t, geoDir)
