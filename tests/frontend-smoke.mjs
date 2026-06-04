@@ -43,10 +43,11 @@ import { createFirewallModel } from '../cmd/ruopenray-ui/web/firewall-model.js';
 import { createServerModel } from '../cmd/ruopenray-ui/web/server-model.js';
 import { createServersView } from '../cmd/ruopenray-ui/web/servers-view.js';
 import { createSettingsActions } from '../cmd/ruopenray-ui/web/settings-actions.js';
+import { createSettingsView } from '../cmd/ruopenray-ui/web/settings-view.js';
 import { createSetupActions } from '../cmd/ruopenray-ui/web/setup-actions.js';
 import { createSetupModel } from '../cmd/ruopenray-ui/web/setup-model.js';
 import { bindSettingsControls } from '../cmd/ruopenray-ui/web/settings-bindings.js';
-import { authRememberStorageKey, clearAuthToken, loadAuthToken } from '../cmd/ruopenray-ui/web/storage.js';
+import { authRememberStorageKey, clearAuthToken, loadAuthToken, normalizeUiTheme } from '../cmd/ruopenray-ui/web/storage.js';
 import { createSniView } from '../cmd/ruopenray-ui/web/sni-view.js';
 import { createSniActions } from '../cmd/ruopenray-ui/web/sni-actions.js';
 import { createUpdatesActions } from '../cmd/ruopenray-ui/web/updates-actions.js';
@@ -1800,6 +1801,73 @@ const routingHelpersSetMatches = routePresetRuleSetMatches(
   [{ ip: ['1.1.1.1'] }, { domain: ['domain:a.test', 'domain:b.test'] }]
 );
 const routingHelpersKeyIgnoresValueOrder = routeRuleConditionKey({ domain: ['b', 'a'] }) === routeRuleConditionKey({ domain: ['a', 'b'] });
+const themeSettingsState = {
+  settingsView: 'interface',
+  uiTheme: 'keenetic',
+  settingsPasswordSaving: false,
+  settingsCurrentPassword: '',
+  settingsNewPassword: '',
+  settingsConfirmPassword: '',
+  status: {},
+  appRelease: {},
+  appBackup: false,
+  appReleaseChecking: false,
+  appUpdating: false,
+  localProxy: { http: {}, socks: {} },
+  loggingSettings: {},
+  loggingLevel: 'info',
+  loggingAccessLog: false,
+  loggingErrorLog: false,
+  loggingDnsLog: false,
+  loggingAccessPath: '',
+  loggingErrorPath: '',
+  loggingMaxSizeMb: '',
+  loggingRotateCopies: '',
+  loggingClearOnRestart: false,
+  loggingRestart: false,
+  storageReport: {},
+  storageLastCleanup: null,
+  serviceStartupDelaySec: '0',
+  serviceApplyDelaySec: '0',
+  serviceGoMemLimit: '',
+  serviceGoGC: '60',
+  serviceDownloadMirror: 'direct',
+  serviceMirrorPrefix: '',
+  installPassword: '',
+  coreVersion: '',
+  coreInstall: null,
+  coreInstalling: false,
+  coreBackup: false,
+  availableCoreVersions: [],
+  coreReleaseLoading: false,
+  coreRelease: {},
+  keeneticSettings: {},
+  keeneticSettingsSaving: false,
+  keeneticIpv6Mode: 'off',
+  keeneticNativePolicyMode: 'off',
+  keeneticEntwareProxy: false,
+  keeneticFdMonitor: false,
+  keeneticDscpMode: 'off',
+  keeneticDscpProxy: '',
+  keeneticDownloadRetries: '',
+  keeneticOfflineInstall: false,
+  keeneticIpExcludeText: '',
+  keeneticPortProxyText: '',
+  keeneticPortExcludeText: '',
+  message: ''
+};
+const themeSettingsView = createSettingsView({
+  state: themeSettingsState,
+  byteSize: formatByteSize,
+  escapeHtml
+});
+const themeSettingsHtml = themeSettingsView.settingsPanel({ githubInstallCommand: () => '' });
+const keeneticThemeRenders = normalizeUiTheme('keenetic') === 'keenetic'
+  && normalizeUiTheme('unexpected') === 'dark'
+  && themeSettingsHtml.includes('data-ui-theme="dark"')
+  && themeSettingsHtml.includes('data-ui-theme="light"')
+  && themeSettingsHtml.includes('data-ui-theme="keenetic"')
+  && themeSettingsHtml.includes('class="settings-theme-card active" data-ui-theme="keenetic"');
 
 const checks = [
   ['aux devices panel', aux.devicesPanel().includes('LAN')],
@@ -1813,6 +1881,7 @@ const checks = [
   ['routing helpers split mixed rules', routingHelpersSplitMixed],
   ['routing helpers preserve mixed flag', routingHelpersPreserveMixed],
   ['routing helpers set matching', routingHelpersSetMatches && routingHelpersKeyIgnoresValueOrder],
+  ['settings keenetic theme renders', keeneticThemeRenders],
   ['routing target bulk replace', routeTargetReplaceWorks],
   ['devices model lease picker', devicesModel.deviceStats().proxy === 1 && devicesModel.routeLeasePicker().includes('192.168.1.2')],
   ['devices actions draft', deviceActionState.config.routing.rules[0]?.source?.[0] === '192.168.1.77' && deviceActionState.config.routing.rules[0]?.inboundTag?.[0] === 'transparent_ipv4'],

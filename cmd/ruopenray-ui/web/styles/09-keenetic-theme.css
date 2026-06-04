@@ -1,0 +1,172 @@
+/* Keenetic-inspired theme overrides */
+body[data-theme="keenetic"] {
+  color-scheme: dark;
+  --bg: #0d1211;
+  --panel: #121a18;
+  --panel-2: #17231f;
+  --line: #2e443d;
+  --line-soft: #21332d;
+  --text: #f1f8f5;
+  --muted: #9bb2a8;
+  --soft: #d1ded8;
+  --accent: #31d084;
+  --accent-2: #7fe3b5;
+  --accent-strong: #b9f2d3;
+  --green: #39d47d;
+  --amber: #f5bf52;
+  --red: #ff6d72;
+  --ok: var(--green);
+  --warning: var(--amber);
+  --danger: var(--red);
+  --shadow: 0 14px 34px rgba(0, 0, 0, 0.28);
+  background:
+    radial-gradient(circle at 12% -10%, rgba(49, 208, 132, 0.14), transparent 30rem),
+    radial-gradient(circle at 88% 6%, rgba(58, 148, 255, 0.08), transparent 28rem),
+    linear-gradient(135deg, #0b100f 0%, #101716 52%, #0a0e0d 100%);
+}
+
+body[data-theme="keenetic"] .sidebar {
+  border-right-color: rgba(49, 208, 132, 0.14);
+  background: rgba(12, 18, 16, 0.92);
+}
+
+body[data-theme="keenetic"] .brand-mark {
+  background: #101816;
+  box-shadow:
+    0 0 0 1px rgba(49, 208, 132, 0.32),
+    0 12px 28px rgba(49, 208, 132, 0.16);
+}
+
+body[data-theme="keenetic"] .brand strong {
+  color: var(--accent-strong);
+}
+
+body[data-theme="keenetic"] .nav button.active,
+body[data-theme="keenetic"] .nav button:hover,
+body[data-theme="keenetic"] .logout-button:hover,
+body[data-theme="keenetic"] .keenetic-link:hover {
+  color: var(--text);
+  background:
+    linear-gradient(135deg, rgba(49, 208, 132, 0.2), rgba(58, 148, 255, 0.08)),
+    rgba(23, 35, 31, 0.92);
+}
+
+body[data-theme="keenetic"] .panel,
+body[data-theme="keenetic"] .stat,
+body[data-theme="keenetic"] .core-stat,
+body[data-theme="keenetic"] .traffic-overview-panel article,
+body[data-theme="keenetic"] .login-card,
+body[data-theme="keenetic"] .modal,
+body[data-theme="keenetic"] .settings-card,
+body[data-theme="keenetic"] .settings-check,
+body[data-theme="keenetic"] .settings-info-grid article,
+body[data-theme="keenetic"] .settings-storage-row,
+body[data-theme="keenetic"] .local-proxy-card,
+body[data-theme="keenetic"] .route-card,
+body[data-theme="keenetic"] .route-row,
+body[data-theme="keenetic"] .route-preset-group-row,
+body[data-theme="keenetic"] .routing-summary-card,
+body[data-theme="keenetic"] .route-empty-state,
+body[data-theme="keenetic"] .route-advanced summary,
+body[data-theme="keenetic"] .dsl-preview-stats div,
+body[data-theme="keenetic"] .server-card,
+body[data-theme="keenetic"] .server-flow-option,
+body[data-theme="keenetic"] .server-external-profile,
+body[data-theme="keenetic"] .subscription-pool,
+body[data-theme="keenetic"] .subscription-candidate,
+body[data-theme="keenetic"] .dns-card,
+body[data-theme="keenetic"] .diagnostic-card,
+body[data-theme="keenetic"] .diagnostic-row,
+body[data-theme="keenetic"] .dns-row,
+body[data-theme="keenetic"] .dns-server-row,
+body[data-theme="keenetic"] .dns-diagnostics-card,
+body[data-theme="keenetic"] .dns-diagnostics-grid article,
+body[data-theme="keenetic"] .wizard-card,
+body[data-theme="keenetic"] .lease-card,
+body[data-theme="keenetic"] .mode-card,
+body[data-theme="keenetic"] .lan-dns-readiness article,
+body[data-theme="keenetic"] .device-rule-card,
+body[data-theme="keenetic"] .domain-row,
+body[data-theme="keenetic"] .log-panel,
+body[data-theme="keenetic"] .dashboard-selected-server {
+  border-color: rgba(49, 208, 132, 0.14);
+  background: rgba(18, 26, 24, 0.9);
+}
+
+body[data-theme="keenetic"] .dash-hero,
+body[data-theme="keenetic"] .dash-hero.is-warn,
+body[data-theme="keenetic"] .settings-hero,
+body[data-theme="keenetic"] .route-hero,
+body[data-theme="keenetic"] .devices-hero,
+body[data-theme="keenetic"] .intercept-hero {
+  border-color: rgba(49, 208, 132, 0.24);
+  background:
+    linear-gradient(135deg, rgba(49, 208, 132, 0.16), transparent 42%),
+    linear-gradient(145deg, rgba(18, 28, 24, 0.96), rgba(12, 18, 18, 0.96));
+}
+
+body[data-theme="keenetic"] .route-score,
+body[data-theme="keenetic"] .settings-hero-status,
+body[data-theme="keenetic"] .dash-hero .metric-stat,
+body[data-theme="keenetic"] .traffic-chart,
+body[data-theme="keenetic"] .xray-stats-panel,
+body[data-theme="keenetic"] .domain-monitor-state,
+body[data-theme="keenetic"] .current-server-panel,
+body[data-theme="keenetic"] .dashboard-current-server {
+  border-color: rgba(49, 208, 132, 0.18);
+  background: rgba(13, 20, 18, 0.72);
+}
+
+body[data-theme="keenetic"] .core-stat.has-update,
+body[data-theme="keenetic"] .traffic-overview-panel .traffic-overview-main,
+body[data-theme="keenetic"] .dashboard-current-server,
+body[data-theme="keenetic"] .lan-dns-readiness article.ok {
+  border-color: rgba(57, 212, 125, 0.3);
+  background:
+    linear-gradient(135deg, rgba(57, 212, 125, 0.1), rgba(58, 148, 255, 0.05)),
+    rgba(18, 26, 24, 0.92);
+}
+
+body[data-theme="keenetic"] .settings-theme-card:hover,
+body[data-theme="keenetic"] .settings-theme-card.active,
+body[data-theme="keenetic"] .mode-card.active,
+body[data-theme="keenetic"] .server-flow-option.active,
+body[data-theme="keenetic"] .dashboard-server-option.active {
+  border-color: rgba(49, 208, 132, 0.5);
+  background: rgba(49, 208, 132, 0.1);
+}
+
+body[data-theme="keenetic"] .route-kind,
+body[data-theme="keenetic"] .route-category,
+body[data-theme="keenetic"] .server-protocol,
+body[data-theme="keenetic"] .server-protocol.doh,
+body[data-theme="keenetic"] .route-target-status,
+body[data-theme="keenetic"] .domain-monitor-chips span,
+body[data-theme="keenetic"] .domain-monitor-device-chip,
+body[data-theme="keenetic"] .domain-monitor-mini-chips b,
+body[data-theme="keenetic"] .server-location-chip,
+body[data-theme="keenetic"] .server-chip {
+  color: var(--accent-strong);
+  border-color: rgba(49, 208, 132, 0.24);
+  background: rgba(49, 208, 132, 0.1);
+}
+
+body[data-theme="keenetic"] .btn.primary,
+body[data-theme="keenetic"] .btn.success {
+  color: #06130d;
+  background: linear-gradient(135deg, #31d084, #8ce8ba);
+  box-shadow: 0 10px 24px rgba(49, 208, 132, 0.2);
+}
+
+body[data-theme="keenetic"] .btn.secondary {
+  color: var(--accent-strong);
+  border-color: rgba(49, 208, 132, 0.28);
+  background: rgba(49, 208, 132, 0.08);
+}
+
+body[data-theme="keenetic"] input:focus,
+body[data-theme="keenetic"] select:focus,
+body[data-theme="keenetic"] textarea:focus {
+  border-color: rgba(49, 208, 132, 0.58);
+  box-shadow: 0 0 0 3px rgba(49, 208, 132, 0.12);
+}

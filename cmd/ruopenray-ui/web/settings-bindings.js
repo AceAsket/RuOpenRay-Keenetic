@@ -37,7 +37,10 @@ export function bindSettingsControls({
         setUiTheme(button.dataset.uiTheme);
         return;
       }
-      state.uiTheme = button.dataset.uiTheme === 'light' ? 'light' : 'dark';
+      state.uiTheme =
+        button.dataset.uiTheme === 'light' || button.dataset.uiTheme === 'keenetic'
+          ? button.dataset.uiTheme
+          : 'dark';
       render();
     });
   });

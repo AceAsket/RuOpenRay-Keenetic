@@ -100,7 +100,8 @@ export function clearAuthToken({ preserveRemember = false } = {}) {
 }
 
 export function normalizeUiTheme(value) {
-  return value === 'light' ? 'light' : 'dark';
+  if (value === 'light' || value === 'keenetic') return value;
+  return 'dark';
 }
 
 export function loadUiTheme() {

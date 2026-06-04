@@ -219,7 +219,7 @@
 
 .settings-theme-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
   gap: 12px;
 }
 
@@ -275,6 +275,14 @@
   background: #f5faf8;
 }
 
+.theme-preview.keenetic {
+  color: #e8f7ef;
+  border-color: rgba(49, 208, 132, 0.42);
+  background:
+    linear-gradient(135deg, rgba(49, 208, 132, 0.2), rgba(58, 148, 255, 0.08)),
+    #111917;
+}
+
 .theme-preview i,
 .theme-preview b,
 .theme-preview em {
@@ -306,6 +314,15 @@
   height: 28px;
   border: 1px solid rgba(54, 209, 189, 0.28);
   background: rgba(54, 209, 189, 0.1);
+}
+
+.theme-preview.keenetic i {
+  background: linear-gradient(180deg, rgba(49, 208, 132, 0.42), rgba(58, 148, 255, 0.16));
+}
+
+.theme-preview.keenetic em {
+  border-color: rgba(49, 208, 132, 0.34);
+  background: rgba(49, 208, 132, 0.12);
 }
 
 .settings-hint {

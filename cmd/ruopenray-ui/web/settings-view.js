@@ -248,7 +248,7 @@ function settingsPanel() {
         <div><h2>Тема интерфейса</h2><span>Выбор сохраняется в браузере и применяется сразу ко всей панели.</span></div>
       </div>
       <div class="settings-theme-grid" role="radiogroup" aria-label="Тема интерфейса">
-        <button type="button" class="settings-theme-card ${state.uiTheme !== 'light' ? 'active' : ''}" data-ui-theme="dark" aria-pressed="${state.uiTheme !== 'light' ? 'true' : 'false'}">
+        <button type="button" class="settings-theme-card ${state.uiTheme === 'dark' ? 'active' : ''}" data-ui-theme="dark" aria-pressed="${state.uiTheme === 'dark' ? 'true' : 'false'}">
           <span class="theme-preview dark" aria-hidden="true"><i></i><b></b><em></em></span>
           <strong>Темная</strong>
           <small>Текущий ночной вид RuOpenRay.</small>
@@ -257,6 +257,11 @@ function settingsPanel() {
           <span class="theme-preview light" aria-hidden="true"><i></i><b></b><em></em></span>
           <strong>Светлая</strong>
           <small>Более читаемая днем и на ярких экранах.</small>
+        </button>
+        <button type="button" class="settings-theme-card ${state.uiTheme === 'keenetic' ? 'active' : ''}" data-ui-theme="keenetic" aria-pressed="${state.uiTheme === 'keenetic' ? 'true' : 'false'}">
+          <span class="theme-preview keenetic" aria-hidden="true"><i></i><b></b><em></em></span>
+          <strong>Keenetic</strong>
+          <small>Графитовая тема в духе KeeneticOS 5.x с зелеными статусами и сетевым акцентом.</small>
         </button>
       </div>
     </section>
