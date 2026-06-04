@@ -81,6 +81,19 @@ function setUiTheme(theme) {
 
 applyUiTheme();
 
+function navIcon(tab) {
+  return ({
+    dashboard: '▦',
+    setup: '◆',
+    servers: '▤',
+    routing: '⇄',
+    dns: '◌',
+    diagnostics: '⌕',
+    profiles: '◉',
+    settings: '⚙'
+  })[tab] || '•';
+}
+
 function clearAuth() {
   state.token = '';
   clearAuthToken({ preserveRemember: true });
@@ -1880,11 +1893,11 @@ function render() {
           <img class="brand-mark" src="/assets/ruopenray-icon-512.png" alt="" />
           <div><strong>RuOpenRay UI</strong><span>Панель Xray для Keenetic</span></div>
         </div>
-        <button class="mobile-menu-toggle" data-action="toggleMobileNav" type="button" aria-expanded="${state.mobileNavOpen ? 'true' : 'false'}">
+        <button class="mobile-menu-toggle" data-action="toggleMobileNav" type="button" aria-expanded="${state.mobileNavOpen ? 'true' : 'false'}" title="${state.mobileNavOpen ? 'Свернуть меню' : 'Развернуть меню'}" aria-label="${state.mobileNavOpen ? 'Свернуть меню' : 'Развернуть меню'}">
           <span>${state.mobileNavOpen ? 'Закрыть меню' : 'Меню'}</span>
         </button>
         <nav class="nav">
-          ${nav.map(([key, title]) => `<button class="${key === state.tab ? 'active' : ''}" data-tab="${key}">${title}</button>`).join('')}
+          ${nav.map(([key, title]) => `<button class="${key === state.tab ? 'active' : ''}" data-tab="${key}" title="${escapeHtml(title)}"><span class="nav-icon" aria-hidden="true">${escapeHtml(navIcon(key))}</span><span class="nav-label">${escapeHtml(title)}</span></button>`).join('')}
         </nav>
         <div class="sidebar-footer">
           <a class="keenetic-link" href="http://192.168.1.1/" target="_blank" rel="noreferrer" title="Открыть Keenetic Web UI" aria-label="Открыть Keenetic Web UI">
